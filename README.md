@@ -12,7 +12,8 @@ let image_path = Path::new("image.png");
 let mut tags = IPTC::read_from_path(&image_path);
 
 let city = tags.get(IPTC::City)
-        assert_eq!(city, "London");
+
+assert_eq!(city, "London");
 
 tags.set_city("Oslo")
     .set_country("Norway")

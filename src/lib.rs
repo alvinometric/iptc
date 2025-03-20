@@ -1,75 +1,11 @@
-#[derive(Debug, Default)]
-pub struct IptcTags {
-    pub object_type_reference: String,
-    pub object_attribute_reference: String,
-    pub object_name: String,
-    pub edit_status: String,
-    pub editorial_update: String,
-    pub urgency: String,
-    pub subject_reference: String,
-    pub category: String,
-    pub supplemental_categories: String,
-    pub fixture_id: String,
-    pub keywords: String,
-    pub content_location_code: String,
-    pub content_location_name: String,
-    pub release_date: String,
-    pub release_time: String,
-    pub expiration_date: String,
-    pub expiration_time: String,
-    pub special_instructions: String,
-    pub action_advised: String,
-    pub reference_service: String,
-    pub reference_date: String,
-    pub reference_number: String,
-    pub date_created: String,
-    pub time_created: String,
-    pub digital_date_created: String,
-    pub digital_time_created: String,
-    pub originating_program: String,
-    pub program_version: String,
-    pub object_cycle: String,
-    pub by_line: String,
-    pub caption: String,
-    pub by_line_title: String,
-    pub city: String,
-    pub sub_location: String,
-    pub province_or_state: String,
-    pub country_or_primary_location_code: String,
-    pub country_or_primary_location_name: String,
-    pub original_transmission_reference: String,
-    pub headline: String,
-    pub credit: String,
-    pub source: String,
-    pub copyright_notice: String,
-    pub contact: String,
-    pub local_caption: String,
-    pub caption_writer: String,
-    pub rasterized_caption: String,
-    pub image_type: String,
-    pub image_orientation: String,
-    pub language_identifier: String,
-    pub audio_type: String,
-    pub audio_sampling_rate: String,
-    pub audio_sampling_resolution: String,
-    pub audio_duration: String,
-    pub audio_outcue: String,
-    pub job_id: String,
-    pub master_document_id: String,
-    pub short_document_id: String,
-    pub unique_document_id: String,
-    pub owner_id: String,
-    pub object_preview_file_format: String,
-    pub object_preview_file_format_version: String,
-    pub object_preview_data: String,
-}
-
-use image::{io::Reader as ImageReader, ImageFormat};
+mod tags;
+use image::{ImageFormat, io::Reader as ImageReader};
+use std::collections::HashMap;
+use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::error::Error;
-use std::collections::HashMap;
+use tags::IptcTags;
 
 use lazy_static::lazy_static;
 
@@ -176,14 +112,22 @@ impl IPTC {
         // Loop through the file looking for the Photoshop header bytes
         while offset < buffer.len() {
             if buffer[offset] != 0xFF {
-                return Err(format!("Not a valid marker at offset {}, found: {}", offset, buffer[offset]).into());
+                return Err(format!(
+                    "Not a valid marker at offset {}, found: {}",
+                    offset, buffer[offset]
+                )
+                .into());
             }
 
             let application_marker = buffer[offset + 1];
 
             if application_marker == 237 {
                 // This is our marker. The content length is 2 byte number.
-                let iptc_data = read_iptc_data(&buffer, offset + 4, (&buffer).read_u16be(offset + 2) as usize)?;
+                let iptc_data = read_iptc_data(
+                    &buffer,
+                    offset + 4,
+                    (&buffer).read_u16be(offset + 2) as usize,
+                )?;
                 return Ok(IPTC { data: iptc_data });
             } else {
                 // Add header length (2 bytes after header type) to offset
@@ -191,7 +135,9 @@ impl IPTC {
             }
         }
 
-        Ok(IPTC { data: HashMap::new() })
+        Ok(IPTC {
+            data: HashMap::new(),
+        })
     }
 }
 
@@ -216,14 +162,15 @@ impl ReadUtils for Vec<u8> {
         let b3 = self[offset + 2] as i32;
         let b4 = self[offset + 3] as i32;
         println!("b1: {}, b2: {}, b3: {}, b4: {}", b1, b2, b3, b4);
-        ((b1) << 24) |
-        ((b2) << 16) |
-        ((b3) << 8) |
-        (b4)
+        ((b1) << 24) | ((b2) << 16) | ((b3) << 8) | (b4)
     }
 }
 
-fn read_iptc_data(buffer: &Vec<u8>, start: usize, length: usize) -> Result<HashMap<String, String>, Box<dyn Error>> {
+fn read_iptc_data(
+    buffer: &Vec<u8>,
+    start: usize,
+    length: usize,
+) -> Result<HashMap<String, String>, Box<dyn Error>> {
     let mut data = HashMap::new();
 
     if buffer.get(start..start + 13).ok_or("Invalid slice")? != b"Photoshop 3.0" {
@@ -322,7 +269,11 @@ struct Block {
     size_of_block: usize,
 }
 
-fn extract_blocks(buffer: &Vec<u8>, start: usize, length: usize) -> Result<Vec<Block>, Box<dyn Error>> {
+fn extract_blocks(
+    buffer: &Vec<u8>,
+    start: usize,
+    length: usize,
+) -> Result<Vec<Block>, Box<dyn Error>> {
     let mut blocks = Vec::new();
     let end = std::cmp::min(buffer.len(), start + length);
 
@@ -352,7 +303,10 @@ fn extract_blocks(buffer: &Vec<u8>, start: usize, length: usize) -> Result<Vec<B
             }
             let block_size = block_size as usize;
 
-            println!("i: {}, name_length: {}, block_size: {}", i, name_length, block_size);
+            println!(
+                "i: {}, name_length: {}, block_size: {}",
+                i, name_length, block_size
+            );
 
             blocks.push(Block {
                 resource_id,
@@ -386,14 +340,19 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
         if buffer[i] == TEXT_START_MARKER {
             // Get the length by finding the next field separator
             let mut field_length = 0;
-            while i + field_length < end && i + field_length < buffer.len() && buffer[i + field_length] != FIELD_DELIMITER {
+            while i + field_length < end
+                && i + field_length < buffer.len()
+                && buffer[i + field_length] != FIELD_DELIMITER
+            {
                 field_length += 1;
             }
 
             if field_length > 0 {
                 if i + 2 < i + field_length {
                     if let Ok(value) = String::from_utf8(buffer[i + 2..i + field_length].to_vec()) {
-                        let cleaned_value = value.trim_start_matches(|c: char| c == '\0' || c.is_control()).to_string();
+                        let cleaned_value = value
+                            .trim_start_matches(|c: char| c == '\0' || c.is_control())
+                            .to_string();
                         data.push(Field {
                             id: buffer[i + 1],
                             value: cleaned_value,

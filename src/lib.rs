@@ -5,13 +5,14 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use tags::{IPTCTags, TagsMap};
+pub use tags::IPTCTags;
+use tags::TagsMap;
 
 const FIELD_DELIMITER: u8 = 28;
 const TEXT_START_MARKER: u8 = 2;
 
 pub struct IPTC {
-    data: HashMap<IPTCTags, String>,
+    pub data: HashMap<IPTCTags, String>,
 }
 
 impl IPTC {

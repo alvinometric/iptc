@@ -1,19 +1,157 @@
+#[derive(Debug, Default)]
+pub struct IptcTags {
+    pub object_type_reference: String,
+    pub object_attribute_reference: String,
+    pub object_name: String,
+    pub edit_status: String,
+    pub editorial_update: String,
+    pub urgency: String,
+    pub subject_reference: String,
+    pub category: String,
+    pub supplemental_categories: String,
+    pub fixture_id: String,
+    pub keywords: String,
+    pub content_location_code: String,
+    pub content_location_name: String,
+    pub release_date: String,
+    pub release_time: String,
+    pub expiration_date: String,
+    pub expiration_time: String,
+    pub special_instructions: String,
+    pub action_advised: String,
+    pub reference_service: String,
+    pub reference_date: String,
+    pub reference_number: String,
+    pub date_created: String,
+    pub time_created: String,
+    pub digital_date_created: String,
+    pub digital_time_created: String,
+    pub originating_program: String,
+    pub program_version: String,
+    pub object_cycle: String,
+    pub by_line: String,
+    pub caption: String,
+    pub by_line_title: String,
+    pub city: String,
+    pub sub_location: String,
+    pub province_or_state: String,
+    pub country_or_primary_location_code: String,
+    pub country_or_primary_location_name: String,
+    pub original_transmission_reference: String,
+    pub headline: String,
+    pub credit: String,
+    pub source: String,
+    pub copyright_notice: String,
+    pub contact: String,
+    pub local_caption: String,
+    pub caption_writer: String,
+    pub rasterized_caption: String,
+    pub image_type: String,
+    pub image_orientation: String,
+    pub language_identifier: String,
+    pub audio_type: String,
+    pub audio_sampling_rate: String,
+    pub audio_sampling_resolution: String,
+    pub audio_duration: String,
+    pub audio_outcue: String,
+    pub job_id: String,
+    pub master_document_id: String,
+    pub short_document_id: String,
+    pub unique_document_id: String,
+    pub owner_id: String,
+    pub object_preview_file_format: String,
+    pub object_preview_file_format_version: String,
+    pub object_preview_data: String,
+}
+
 use image::{io::Reader as ImageReader, ImageFormat};
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write, Cursor, Read};
+use std::io::{BufReader, Read};
 use std::path::Path;
 use std::error::Error;
+use std::collections::HashMap;
+
+use lazy_static::lazy_static;
 
 const FIELD_DELIMITER: u8 = 28;
 const TEXT_START_MARKER: u8 = 2;
 
+lazy_static! {
+    static ref TAGS: IptcTags = IptcTags {
+        object_type_reference: String::from("OBJECT_TYPE_REFERENCE"),
+        object_attribute_reference: String::from("OBJECT_ATTRIBUTE_REFERENCE"),
+        object_name: String::from("OBJECT_NAME"),
+        edit_status: String::from("EDIT_STATUS"),
+        editorial_update: String::from("EDITORIAL_UPDATE"),
+        urgency: String::from("URGENCY"),
+        subject_reference: String::from("SUBJECT_REFERENCE"),
+        category: String::from("CATEGORY"),
+        supplemental_categories: String::from("SUPPLEMENTAL_CATEGORIES"),
+        fixture_id: String::from("FIXTURE_ID"),
+        keywords: String::from("KEYWORDS"),
+        content_location_code: String::from("CONTENT_LOCATION_CODE"),
+        content_location_name: String::from("CONTENT_LOCATION_NAME"),
+        release_date: String::from("RELEASE_DATE"),
+        release_time: String::from("RELEASE_TIME"),
+        expiration_date: String::from("EXPIRATION_DATE"),
+        expiration_time: String::from("EXPIRATION_TIME"),
+        special_instructions: String::from("SPECIAL_INSTRUCTIONS"),
+        action_advised: String::from("ACTION_ADVISED"),
+        reference_service: String::from("REFERENCE_SERVICE"),
+        reference_date: String::from("REFERENCE_DATE"),
+        reference_number: String::from("REFERENCE_NUMBER"),
+        date_created: String::from("DATE_CREATED"),
+        time_created: String::from("TIME_CREATED"),
+        digital_date_created: String::from("DIGITAL_DATE_CREATED"),
+        digital_time_created: String::from("DIGITAL_TIME_CREATED"),
+        originating_program: String::from("ORIGINATING_PROGRAM"),
+        program_version: String::from("PROGRAM_VERSION"),
+        object_cycle: String::from("OBJECT_CYCLE"),
+        by_line: String::from("BY_LINE"),
+        caption: String::from("CAPTION"),
+        by_line_title: String::from("BY_LINE_TITLE"),
+        city: String::from("CITY"),
+        sub_location: String::from("SUB_LOCATION"),
+        province_or_state: String::from("PROVINCE_OR_STATE"),
+        country_or_primary_location_code: String::from("COUNTRY_OR_PRIMARY_LOCATION_CODE"),
+        country_or_primary_location_name: String::from("COUNTRY_OR_PRIMARY_LOCATION_NAME"),
+        original_transmission_reference: String::from("ORIGINAL_TRANSMISSION_REFERENCE"),
+        headline: String::from("HEADLINE"),
+        credit: String::from("CREDIT"),
+        source: String::from("SOURCE"),
+        copyright_notice: String::from("COPYRIGHT_NOTICE"),
+        contact: String::from("CONTACT"),
+        local_caption: String::from("LOCAL_CAPTION"),
+        caption_writer: String::from("CAPTION_WRITER"),
+        rasterized_caption: String::from("RASTERIZED_CAPTION"),
+        image_type: String::from("IMAGE_TYPE"),
+        image_orientation: String::from("IMAGE_ORIENTATION"),
+        language_identifier: String::from("LANGUAGE_IDENTIFIER"),
+        audio_type: String::from("AUDIO_TYPE"),
+        audio_sampling_rate: String::from("AUDIO_SAMPLING_RATE"),
+        audio_sampling_resolution: String::from("AUDIO_SAMPLING_RESOLUTION"),
+        audio_duration: String::from("AUDIO_DURATION"),
+        audio_outcue: String::from("AUDIO_OUTCUE"),
+        job_id: String::from("JOB_ID"),
+        master_document_id: String::from("MASTER_DOCUMENT_ID"),
+        short_document_id: String::from("SHORT_DOCUMENT_ID"),
+        unique_document_id: String::from("UNIQUE_DOCUMENT_ID"),
+        owner_id: String::from("OWNER_ID"),
+        object_preview_file_format: String::from("OBJECT_PREVIEW_FILE_FORMAT"),
+        object_preview_file_format_version: String::from("OBJECT_PREVIEW_FILE_FORMAT_VERSION"),
+        object_preview_data: String::from("OBJECT_PREVIEW_DATA"),
+    };
+}
+
 pub struct IPTC {
-    city: String,
+    data: HashMap<String, String>,
 }
 
 impl IPTC {
-    pub fn get_city(&self) -> String {
-        self.city.clone()
+    pub const CITY: &'static str = "CITY";
+
+    pub fn get_data(&self) -> HashMap<String, String> {
+        self.data.clone()
     }
 
     pub fn read_from_path(image_path: &Path) -> Result<Self, Box<dyn Error>> {
@@ -21,7 +159,6 @@ impl IPTC {
         let bufreader = BufReader::new(file);
         let img_reader = ImageReader::new(bufreader).with_guessed_format()?;
         let _image = img_reader.decode()?;
-        let mut city = String::default();
 
         let file = File::open(image_path)?;
         let mut bufreader = BufReader::new(file);
@@ -47,17 +184,14 @@ impl IPTC {
             if application_marker == 237 {
                 // This is our marker. The content length is 2 byte number.
                 let iptc_data = read_iptc_data(&buffer, offset + 4, (&buffer).read_u16be(offset + 2) as usize)?;
-                if let Some(c) = iptc_data.get("city") {
-                    city = c.clone();
-                }
-                break;
+                return Ok(IPTC { data: iptc_data });
             } else {
                 // Add header length (2 bytes after header type) to offset
                 offset += 2 + (&buffer).read_u16be(offset + 2) as usize;
             }
         }
 
-        Ok(IPTC { city })
+        Ok(IPTC { data: HashMap::new() })
     }
 }
 
@@ -89,8 +223,8 @@ impl ReadUtils for Vec<u8> {
     }
 }
 
-fn read_iptc_data(buffer: &Vec<u8>, start: usize, length: usize) -> Result<std::collections::HashMap<String, String>, Box<dyn Error>> {
-    let mut data = std::collections::HashMap::new();
+fn read_iptc_data(buffer: &Vec<u8>, start: usize, length: usize) -> Result<HashMap<String, String>, Box<dyn Error>> {
+    let mut data = HashMap::new();
 
     if buffer.get(start..start + 13).ok_or("Invalid slice")? != b"Photoshop 3.0" {
         return Err("Not valid Photoshop data".into());
@@ -105,9 +239,74 @@ fn read_iptc_data(buffer: &Vec<u8>, start: usize, length: usize) -> Result<std::
                 .iter()
                 .for_each(|field| {
                     println!("Field: {:?}", field);
-                    // Assuming fieldMap is not needed for this example
-                    if field.id == 90 {
-                        data.insert("city".to_string(), field.value.clone());
+                    let name = match field.id {
+                        3 => &TAGS.object_type_reference,
+                        4 => &TAGS.object_attribute_reference,
+                        5 => &TAGS.object_name,
+                        7 => &TAGS.edit_status,
+                        8 => &TAGS.editorial_update,
+                        10 => &TAGS.urgency,
+                        12 => &TAGS.subject_reference,
+                        15 => &TAGS.category,
+                        20 => &TAGS.supplemental_categories,
+                        22 => &TAGS.fixture_id,
+                        25 => &TAGS.keywords,
+                        26 => &TAGS.content_location_code,
+                        27 => &TAGS.content_location_name,
+                        30 => &TAGS.release_date,
+                        35 => &TAGS.release_time,
+                        37 => &TAGS.expiration_date,
+                        38 => &TAGS.expiration_time,
+                        40 => &TAGS.special_instructions,
+                        42 => &TAGS.action_advised,
+                        45 => &TAGS.reference_service,
+                        47 => &TAGS.reference_date,
+                        50 => &TAGS.reference_number,
+                        55 => &TAGS.date_created,
+                        60 => &TAGS.time_created,
+                        62 => &TAGS.digital_date_created,
+                        63 => &TAGS.digital_time_created,
+                        65 => &TAGS.originating_program,
+                        70 => &TAGS.program_version,
+                        75 => &TAGS.object_cycle,
+                        80 => &TAGS.by_line,
+                        84 => &TAGS.caption,
+                        85 => &TAGS.by_line_title,
+                        90 => &TAGS.city,
+                        92 => &TAGS.sub_location,
+                        95 => &TAGS.province_or_state,
+                        100 => &TAGS.country_or_primary_location_code,
+                        101 => &TAGS.country_or_primary_location_name,
+                        103 => &TAGS.original_transmission_reference,
+                        105 => &TAGS.headline,
+                        110 => &TAGS.credit,
+                        115 => &TAGS.source,
+                        116 => &TAGS.copyright_notice,
+                        118 => &TAGS.contact,
+                        120 => &TAGS.caption,
+                        121 => &TAGS.local_caption,
+                        122 => &TAGS.caption_writer,
+                        125 => &TAGS.rasterized_caption,
+                        130 => &TAGS.image_type,
+                        131 => &TAGS.image_orientation,
+                        135 => &TAGS.language_identifier,
+                        150 => &TAGS.audio_type,
+                        151 => &TAGS.audio_sampling_rate,
+                        152 => &TAGS.audio_sampling_resolution,
+                        153 => &TAGS.audio_duration,
+                        154 => &TAGS.audio_outcue,
+                        184 => &TAGS.job_id,
+                        185 => &TAGS.master_document_id,
+                        186 => &TAGS.short_document_id,
+                        187 => &TAGS.unique_document_id,
+                        188 => &TAGS.owner_id,
+                        200 => &TAGS.object_preview_file_format,
+                        201 => &TAGS.object_preview_file_format_version,
+                        202 => &TAGS.object_preview_data,
+                        _ => "",
+                    };
+                    if name != "" {
+                        data.insert(name.to_string(), field.value.clone());
                     }
                 });
         });
@@ -222,9 +421,10 @@ mod tests {
     fn test_read_write_iptc() -> Result<(), Box<dyn Error>> {
         let image_path = Path::new("DSC00512.jpg");
 
-        let mut tags = IPTC::read_from_path(&image_path)?;
+        let iptc = IPTC::read_from_path(&image_path)?;
+        let tags = iptc.get_data();
 
-        let city = tags.get_city();
+        let city = tags.get(IPTC::CITY).unwrap();
         assert_eq!(city, "London");
 
         Ok(())

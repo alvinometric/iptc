@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 image = "0.25.5"
-lazy_static = "1.4.0"
+strum_macros = "0.27.1"

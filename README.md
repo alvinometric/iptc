@@ -11,7 +11,7 @@ use std::path::Path;
 let image_path = Path::new("image.png");
 let mut tags = IPTC::read_from_path(&image_path);
 
-let city = tags.get(IPTC::City)
+let city = tags.get(IPTCTags::City)
 
 assert_eq!(city, "London");
 

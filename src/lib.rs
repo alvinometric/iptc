@@ -121,7 +121,9 @@ fn read_iptc_data(
                 .iter()
                 .for_each(|field| {
                     println!("Field ID: {}, Field: {:?}", field.id, field);
-                    let name: IPTCTags = tags_map.get(field.id.into()).unwrap_or(IPTCTags::Null);
+                    let (name, repeatable) = tags_map
+                        .get(field.id.into())
+                        .unwrap_or((IPTCTags::Null, false));
                     if name != IPTCTags::Null {
                         data.insert(name, field.value.clone());
                     }

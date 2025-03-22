@@ -66,6 +66,7 @@ pub enum IPTCTags {
     ObjectPreviewFileFormat,
     ObjectPreviewFileFormatVersion,
     ObjectPreviewData,
+    ApplicationRecordVersion,
 }
 
 pub struct TagsMap {
@@ -81,6 +82,7 @@ struct TagBlock {
 impl TagsMap {
     pub fn new() -> Self {
         let map: HashMap<u32, (IPTCTags, bool)> = [
+            (0x020000, (IPTCTags::ApplicationRecordVersion, false)),
             (0x020003, (IPTCTags::ObjectTypeReference, false)),
             (0x020004, (IPTCTags::ObjectAttributeReference, false)),
             (0x020005, (IPTCTags::ObjectName, false)),

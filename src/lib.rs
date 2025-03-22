@@ -5,17 +5,17 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
-pub use tags::IPTCTags;
-use tags::TagsMap;
+pub use tags::IPTCTag;
+use tags::{NULL_BLOCK, TagsMap};
 
 const FIELD_DELIMITER: u8 = 0x1c;
 
 pub struct IPTC {
-    pub data: HashMap<IPTCTags, String>,
+    pub data: HashMap<IPTCTag, String>,
 }
 
 impl IPTC {
-    pub fn get(&self, tag: IPTCTags) -> String {
+    pub fn get(&self, tag: IPTCTag) -> String {
         let returned_tag = self.data.get(&tag);
         if returned_tag == None {
             return String::new();
@@ -103,8 +103,8 @@ fn read_iptc_data(
     buffer: &Vec<u8>,
     start: usize,
     length: usize,
-) -> Result<HashMap<IPTCTags, String>, Box<dyn Error>> {
-    let mut data: HashMap<IPTCTags, String> = HashMap::new();
+) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
+    let mut data: HashMap<IPTCTag, String> = HashMap::new();
     let tags_map = TagsMap::new();
 
     if buffer.get(start..start + 13).ok_or("Invalid slice")? != b"Photoshop 3.0" {
@@ -121,9 +121,9 @@ fn read_iptc_data(
             for field in fields {
                 let tag_key = ((field.record_number as u32) << 16) | (field.dataset_number as u32);
                 println!("Field ID: {}, Field: {:?}", tag_key, field);
-                let (name, repeatable) = tags_map.get(tag_key).unwrap_or((IPTCTags::Null, false));
+                let (name, repeatable, parse) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 
-                if name != IPTCTags::Null {
+                if name != IPTCTag::Null {
                     if repeatable {
                         let value = field.value.trim();
                         if !value.is_empty() {
@@ -138,11 +138,13 @@ fn read_iptc_data(
                                     existing_value.push_str(value);
                                 }
                             } else {
-                                data.insert(name, value.to_string());
+                                let parsed_value = parse(field.value);
+                                data.insert(name, parsed_value);
                             }
                         }
                     } else if field.value.trim().len() > 0 {
-                        data.insert(name, field.value.to_string());
+                        let parsed_value = parse(field.value);
+                        data.insert(name, parsed_value);
                     }
                 }
             }
@@ -268,7 +270,7 @@ mod tests {
 
         let iptc = IPTC::read_from_path(&image_path)?;
 
-        let city = iptc.get(IPTCTags::City);
+        let city = iptc.get(IPTCTag::City);
         assert_eq!(city, "London");
 
         Ok(())

@@ -1,5 +1,5 @@
 use iptc::IPTC;
-use iptc::IPTCTags;
+use iptc::IPTCTag;
 use std::error::Error;
 use std::path::Path;
 
@@ -12,14 +12,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("IPTC: {:?}", iptc.data);
 
-    let city = iptc.get(IPTCTags::City);
-    let keywords = iptc.get(IPTCTags::Keywords);
+    let city = iptc.get(IPTCTag::City);
+    let keywords = iptc.get(IPTCTag::Keywords);
 
     println!("city: {}", city);
     println!("keywords: {}", keywords);
     println!(
         "ApplicationRecordVersion: {}",
-        iptc.get(IPTCTags::ApplicationRecordVersion)
+        iptc.get(IPTCTag::ApplicationRecordVersion)
     );
     Ok(())
 }

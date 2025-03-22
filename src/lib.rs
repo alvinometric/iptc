@@ -8,8 +8,7 @@ use std::path::Path;
 pub use tags::IPTCTags;
 use tags::TagsMap;
 
-const FIELD_DELIMITER: u8 = 28;
-const TEXT_START_MARKER: u8 = 2;
+const FIELD_DELIMITER: u8 = 0x1c;
 
 pub struct IPTC {
     pub data: HashMap<IPTCTags, String>,
@@ -105,7 +104,7 @@ fn read_iptc_data(
     start: usize,
     length: usize,
 ) -> Result<HashMap<IPTCTags, String>, Box<dyn Error>> {
-    let mut data = HashMap::new();
+    let mut data: HashMap<IPTCTags, String> = HashMap::new();
     let tags_map = TagsMap::new();
 
     if buffer.get(start..start + 13).ok_or("Invalid slice")? != b"Photoshop 3.0" {
@@ -117,17 +116,36 @@ fn read_iptc_data(
         .filter(|block| block.resource_id == 1028)
         .for_each(|block| {
             println!("Block: {:?}", block);
-            extract_iptc_fields_from_block(buffer, block.start_of_block, block.size_of_block)
-                .iter()
-                .for_each(|field| {
-                    println!("Field ID: {}, Field: {:?}", field.id, field);
-                    let (name, repeatable) = tags_map
-                        .get(field.id.into())
-                        .unwrap_or((IPTCTags::Null, false));
-                    if name != IPTCTags::Null {
-                        data.insert(name, field.value.clone());
+            let fields =
+                extract_iptc_fields_from_block(buffer, block.start_of_block, block.size_of_block);
+            for field in fields {
+                let tag_key = ((field.record_number as u32) << 16) | (field.dataset_number as u32);
+                println!("Field ID: {}, Field: {:?}", tag_key, field);
+                let (name, repeatable) = tags_map.get(tag_key).unwrap_or((IPTCTags::Null, false));
+
+                if name != IPTCTags::Null {
+                    if repeatable {
+                        let value = field.value.trim();
+                        if !value.is_empty() {
+                            if let Some(existing_value) = data.get_mut(&name) {
+                                if !existing_value
+                                    .to_lowercase()
+                                    .contains(&value.to_lowercase())
+                                {
+                                    if !existing_value.is_empty() {
+                                        existing_value.push_str(", ");
+                                    }
+                                    existing_value.push_str(value);
+                                }
+                            } else {
+                                data.insert(name, value.to_string());
+                            }
+                        }
+                    } else {
+                        data.insert(name, field.value.to_string());
                     }
-                });
+                }
+            }
         });
 
     Ok(data)
@@ -166,14 +184,10 @@ fn extract_blocks(
             let name = String::from_utf8(buffer[i + 6..i + 6 + name_length].to_vec())?;
 
             println!("Reading block size at i: {}", i + 6 + name_length);
-            if i + 6 + name_length + 4 > end {
+            if i + 6 + name_length + 2 > end {
                 return Err("Invalid offset for block size".into());
             }
-            let block_size = buffer.read_i32be(i + 6 + name_length);
-            if block_size < 0 {
-                return Err("Negative block size".into());
-            }
-            let block_size = block_size as usize;
+            let block_size = buffer.read_u16be(i + 6 + name_length) as usize;
 
             println!(
                 "i: {}, name_length: {}, block_size: {}",
@@ -199,42 +213,42 @@ fn extract_blocks(
 
 #[derive(Debug)]
 struct Field {
-    id: u8,
+    record_number: u8,
+    dataset_number: u8,
     value: String,
 }
 
 fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize) -> Vec<Field> {
-    let mut data = Vec::new();
+    let mut data: Vec<Field> = Vec::new();
     let end = std::cmp::min(buffer.len(), start + length);
     let mut i = start;
 
-    while i < end {
-        if buffer[i] == TEXT_START_MARKER {
-            // Get the length by finding the next field separator
-            let mut field_length = 0;
-            while i + field_length < end
-                && i + field_length < buffer.len()
-                && buffer[i + field_length] != FIELD_DELIMITER
-            {
-                field_length += 1;
-            }
+    println!("Block bytes: {:?}", &buffer[start..end]);
 
-            if field_length > 0 {
-                if i + 2 < i + field_length {
-                    if let Ok(value) = String::from_utf8(buffer[i + 2..i + field_length].to_vec()) {
-                        let cleaned_value = value
-                            .trim_start_matches(|c: char| c == '\0' || c.is_control())
-                            .to_string();
-                        data.push(Field {
-                            id: buffer[i + 1],
-                            value: cleaned_value,
-                        });
-                    }
+    while i < end {
+        if buffer[i] == FIELD_DELIMITER {
+            let value_length = buffer.read_u16be(i + 3) as usize;
+            let record_number = buffer[i + 1];
+            let dataset_number = buffer[i + 2];
+
+            println!(
+                "Field at i: {}, length: {}, record_number: {}, dataset_number: {}",
+                i, value_length, record_number, dataset_number
+            );
+            if i + 5 + value_length <= end {
+                if let Ok(value) = String::from_utf8(buffer[i + 5..i + 5 + value_length].to_vec()) {
+                    let cleaned_value = value
+                        .trim_start_matches(|c: char| c == '\0' || c.is_control())
+                        .trim_end_matches(|c: char| c == '\0' || c.is_control())
+                        .replace(|c: char| !c.is_ascii(), "");
+                    data.push(Field {
+                        record_number,
+                        dataset_number,
+                        value: cleaned_value.to_string(),
+                    });
                 }
-                i += field_length;
-            } else {
-                i += 1;
             }
+            i += 5 + value_length;
         } else {
             i += 1;
         }

@@ -141,7 +141,7 @@ fn read_iptc_data(
                                 data.insert(name, value.to_string());
                             }
                         }
-                    } else {
+                    } else if field.value.trim().len() > 0 {
                         data.insert(name, field.value.to_string());
                     }
                 }

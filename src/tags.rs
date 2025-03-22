@@ -4,6 +4,12 @@ use strum_macros::Display;
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Display)]
 pub enum IPTCTag {
     Null,
+    // 0x0100 blocks
+    DateSent,
+    TimeSent,
+    CodedCharacterSet,
+    // 0x0200 blocks
+    RecordVersion,
     ObjectTypeReference,
     ObjectAttributeReference,
     ObjectName,
@@ -66,7 +72,8 @@ pub enum IPTCTag {
     ObjectPreviewFileFormat,
     ObjectPreviewFileFormatVersion,
     ObjectPreviewData,
-    ApplicationRecordVersion,
+    // 0x0700 blocks
+    SizeMode,
 }
 
 pub type ParseFn = fn(String) -> String;
@@ -89,10 +96,12 @@ pub const NULL_BLOCK: TagBlock = (IPTCTag::Null, false, PARSE_FN);
 impl TagsMap {
     pub fn new() -> Self {
         let map: HashMap<u32, TagBlock> = [
-            (
-                0x020000,
-                (IPTCTag::ApplicationRecordVersion, false, PARSE_FN),
-            ),
+            // 0x0100 blocks
+            (0x014600, (IPTCTag::DateSent, false, PARSE_FN)),
+            (0x015000, (IPTCTag::TimeSent, false, PARSE_FN)),
+            (0x015a00, (IPTCTag::CodedCharacterSet, false, PARSE_FN)),
+            // 0x0200 blocks
+            (0x020000, (IPTCTag::RecordVersion, false, PARSE_FN)),
             (0x020003, (IPTCTag::ObjectTypeReference, false, PARSE_FN)),
             (
                 0x020004,
@@ -176,6 +185,8 @@ impl TagsMap {
                 (IPTCTag::ObjectPreviewFileFormatVersion, false, PARSE_FN),
             ),
             (0x0200ca, (IPTCTag::ObjectPreviewData, false, PARSE_FN)),
+            // 0x0700 blocks
+            (0x070a00, (IPTCTag::SizeMode, false, PARSE_FN)),
         ]
         .into_iter()
         .collect();

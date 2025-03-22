@@ -225,8 +225,6 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
     let end = std::cmp::min(buffer.len(), start + length);
     let mut i = start;
 
-    println!("Block bytes: {:?}", &buffer[start..end]);
-
     while i < end {
         if buffer[i] == FIELD_DELIMITER {
             let value_length = buffer.read_u16be(i + 3) as usize;

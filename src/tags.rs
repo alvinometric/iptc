@@ -5,6 +5,7 @@ use strum_macros::Display;
 pub enum IPTCTag {
     Null,
     // 0x0100 blocks
+    ModelVersion,
     DateSent,
     TimeSent,
     CodedCharacterSet,
@@ -89,7 +90,18 @@ pub fn default_parse(s: String) -> String {
     s.to_string()
 }
 
+fn parse_short(s: String) -> String {
+    // Convert bytes to number, handle both big and little endian
+    let value = s
+        .as_bytes()
+        .iter()
+        .fold(0u16, |acc, &b| (acc << 8) | b as u16);
+
+    value.to_string()
+}
+
 const PARSE_FN: ParseFn = default_parse;
+const PARSE_SHORT: ParseFn = parse_short;
 
 pub const NULL_BLOCK: TagBlock = (IPTCTag::Null, false, PARSE_FN);
 
@@ -97,11 +109,12 @@ impl TagsMap {
     pub fn new() -> Self {
         let map: HashMap<u32, TagBlock> = [
             // 0x0100 blocks
+            (0x010000, (IPTCTag::ModelVersion, false, PARSE_SHORT)),
             (0x014600, (IPTCTag::DateSent, false, PARSE_FN)),
             (0x015000, (IPTCTag::TimeSent, false, PARSE_FN)),
             (0x015a00, (IPTCTag::CodedCharacterSet, false, PARSE_FN)),
             // 0x0200 blocks
-            (0x020000, (IPTCTag::RecordVersion, false, PARSE_FN)),
+            (0x020000, (IPTCTag::RecordVersion, false, PARSE_SHORT)),
             (0x020003, (IPTCTag::ObjectTypeReference, false, PARSE_FN)),
             (
                 0x020004,

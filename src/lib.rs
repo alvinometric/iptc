@@ -15,6 +15,10 @@ pub struct IPTC {
 }
 
 impl IPTC {
+    pub fn get_all(&self) -> HashMap<IPTCTag, String> {
+        self.data.clone()
+    }
+
     pub fn get(&self, tag: IPTCTag) -> String {
         let returned_tag = self.data.get(&tag);
         if returned_tag == None {
@@ -119,7 +123,11 @@ fn read_iptc_data(
             let fields =
                 extract_iptc_fields_from_block(buffer, block.start_of_block, block.size_of_block);
             for field in fields {
-                let tag_key = ((field.record_number as u32) << 16) | (field.dataset_number as u32);
+                let record_number = field.record_number;
+                let dataset_number = field.dataset_number;
+
+                let tag_key = format!("{}:{}", record_number, dataset_number);
+
                 println!("Field ID: {}, Field: {:?}", tag_key, field);
                 let (name, repeatable, parse) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 

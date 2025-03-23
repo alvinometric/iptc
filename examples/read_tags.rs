@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("-------------------");
 
-    println!("IPTC: {:?}", iptc.data);
+    println!("IPTC: {:?}", iptc.get_all());
 
     let city = iptc.get(IPTCTag::City);
     let keywords = iptc.get(IPTCTag::Keywords);

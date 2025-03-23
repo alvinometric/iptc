@@ -15,9 +15,5 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("city: {}", city);
     println!("keywords: {}", keywords);
-    println!(
-        "ApplicationRecordVersion: {}",
-        iptc.get(IPTCTag::RecordVersion)
-    );
     Ok(())
 }

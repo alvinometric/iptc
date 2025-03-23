@@ -4,12 +4,10 @@ use strum_macros::Display;
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Display)]
 pub enum IPTCTag {
     Null,
-    // 0x0100 blocks
     ModelVersion,
     DateSent,
     TimeSent,
     CodedCharacterSet,
-    // 0x0200 blocks
     RecordVersion,
     ObjectTypeReference,
     ObjectAttributeReference,
@@ -77,33 +75,29 @@ pub enum IPTCTag {
     SizeMode,
 }
 
-pub type ParseFn = fn(String) -> String;
+pub(crate) type ParseFn = fn(String) -> String;
 
 // name, repeatable, default parse
-pub type TagBlock = (IPTCTag, bool, ParseFn);
+pub(crate) type TagBlock = (IPTCTag, bool, ParseFn);
 
-pub struct TagsMap {
+pub(crate) struct TagsMap {
     map: HashMap<String, TagBlock>,
 }
 
-pub fn default_parse(s: String) -> String {
+fn default_parse(s: String) -> String {
     // Convert comma-separated ASCII values to UTF-8 string
-    let bytes: Vec<u8> = s.split(',')
-        .map(|b| b.parse::<u8>().unwrap_or(0))
-        .collect();
+    let bytes: Vec<u8> = s.split(',').map(|b| b.parse::<u8>().unwrap_or(0)).collect();
     String::from_utf8(bytes).unwrap_or_default()
 }
 
 fn parse_short(s: String) -> String {
     // Convert bytes to number, big endian
-    let bytes: Vec<u8> = s.split(',')
-        .map(|b| b.parse::<u8>().unwrap_or(0))
-        .collect();
-    
+    let bytes: Vec<u8> = s.split(',').map(|b| b.parse::<u8>().unwrap_or(0)).collect();
+
     if bytes.len() != 2 {
         return "0".to_string();
     }
-    
+
     let value = ((bytes[0] as u16) << 8) | (bytes[1] as u16);
     value.to_string()
 }
@@ -118,7 +112,7 @@ pub const NULL_BLOCK: TagBlock = (IPTCTag::Null, false, PARSE_FN);
 // These are in the map as "record:dataset" -> tag.
 // This is because I could only find a mapping of binary -> tag and not of record+dataset -> tag.
 impl TagsMap {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let map: HashMap<String, TagBlock> = [
             // Record 1 blocks
             ("1:0", (IPTCTag::ModelVersion, false, PARSE_SHORT)),
@@ -211,7 +205,7 @@ impl TagsMap {
         TagsMap { map }
     }
 
-    pub fn get(&self, tag: String) -> Option<TagBlock> {
+    pub(crate) fn get(&self, tag: String) -> Option<TagBlock> {
         self.map.get(&tag).copied()
     }
 }

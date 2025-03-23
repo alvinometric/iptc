@@ -132,27 +132,25 @@ fn read_iptc_data(
                 let (name, repeatable, parse) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 
                 if name != IPTCTag::Null {
-                    if repeatable {
-                        let value = field.value.trim();
-                        if !value.is_empty() {
+                    let parsed_value = parse(field.value);
+                    if !parsed_value.trim().is_empty() {
+                        if repeatable {
                             if let Some(existing_value) = data.get_mut(&name) {
                                 if !existing_value
                                     .to_lowercase()
-                                    .contains(&value.to_lowercase())
+                                    .contains(&parsed_value.to_lowercase())
                                 {
                                     if !existing_value.is_empty() {
                                         existing_value.push_str(", ");
                                     }
-                                    existing_value.push_str(value);
+                                    existing_value.push_str(&parsed_value);
                                 }
                             } else {
-                                let parsed_value = parse(field.value);
                                 data.insert(name, parsed_value);
                             }
+                        } else {
+                            data.insert(name, parsed_value);
                         }
-                    } else if field.value.trim().len() > 0 {
-                        let parsed_value = parse(field.value);
-                        data.insert(name, parsed_value);
                     }
                 }
             }
@@ -244,24 +242,19 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
                 i, value_length, record_number, dataset_number
             );
             if i + 5 + value_length <= end {
-                if let Ok(value) = String::from_utf8(buffer[i + 5..i + 5 + value_length].to_vec()) {
-                    let cleaned_value = value
-                        .trim_start_matches(|c: char| c == '\0' || c.is_control())
-                        .trim_end_matches(|c: char| c == '\0' || c.is_control())
-                        .replace(|c: char| !c.is_ascii(), "");
-                    data.push(Field {
-                        record_number,
-                        dataset_number,
-                        value: cleaned_value.to_string(),
-                    });
-                }
+                let raw_bytes = &buffer[i + 5..i + 5 + value_length];
+                let value = raw_bytes.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(",");
+                data.push(Field {
+                    record_number,
+                    dataset_number,
+                    value,
+                });
             }
             i += 5 + value_length;
         } else {
             i += 1;
         }
     }
-
     data
 }
 

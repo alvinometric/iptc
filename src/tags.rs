@@ -87,16 +87,24 @@ pub struct TagsMap {
 }
 
 pub fn default_parse(s: String) -> String {
-    s.to_string()
+    // Convert comma-separated ASCII values to UTF-8 string
+    let bytes: Vec<u8> = s.split(',')
+        .map(|b| b.parse::<u8>().unwrap_or(0))
+        .collect();
+    String::from_utf8(bytes).unwrap_or_default()
 }
 
 fn parse_short(s: String) -> String {
-    // Convert bytes to number, handle both big and little endian
-    let value = s
-        .as_bytes()
-        .iter()
-        .fold(0u16, |acc, &b| (acc << 8) | b as u16);
-
+    // Convert bytes to number, big endian
+    let bytes: Vec<u8> = s.split(',')
+        .map(|b| b.parse::<u8>().unwrap_or(0))
+        .collect();
+    
+    if bytes.len() != 2 {
+        return "0".to_string();
+    }
+    
+    let value = ((bytes[0] as u16) << 8) | (bytes[1] as u16);
     value.to_string()
 }
 
@@ -118,7 +126,7 @@ impl TagsMap {
             ("1:80", (IPTCTag::TimeSent, false, PARSE_FN)),
             ("1:90", (IPTCTag::CodedCharacterSet, false, PARSE_FN)),
             // Record 2 blocks
-            ("2:0", (IPTCTag::RecordVersion, false, PARSE_FN)),
+            ("2:0", (IPTCTag::RecordVersion, false, PARSE_SHORT)),
             ("2:3", (IPTCTag::ObjectTypeReference, false, PARSE_FN)),
             ("2:4", (IPTCTag::ObjectAttributeReference, false, PARSE_FN)),
             ("2:5", (IPTCTag::ObjectName, false, PARSE_FN)),

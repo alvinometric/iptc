@@ -81,7 +81,6 @@ impl IPTC {
 trait ReadUtils {
     fn read_u16be(&self, offset: usize) -> u16;
     fn read_i16be(&self, offset: usize) -> i16;
-    fn read_i32be(&self, offset: usize) -> i32;
 }
 
 impl ReadUtils for Vec<u8> {
@@ -91,15 +90,6 @@ impl ReadUtils for Vec<u8> {
 
     fn read_i16be(&self, offset: usize) -> i16 {
         ((self[offset] as i16) << 8) | (self[offset + 1] as i16)
-    }
-
-    fn read_i32be(&self, offset: usize) -> i32 {
-        let b1 = self[offset] as i32;
-        let b2 = self[offset + 1] as i32;
-        let b3 = self[offset + 2] as i32;
-        let b4 = self[offset + 3] as i32;
-        println!("b1: {}, b2: {}, b3: {}, b4: {}", b1, b2, b3, b4);
-        ((b1) << 24) | ((b2) << 16) | ((b3) << 8) | (b4)
     }
 }
 
@@ -119,7 +109,7 @@ fn read_iptc_data(
         .iter()
         .filter(|block| block.resource_id == 1028)
         .for_each(|block| {
-            println!("Block: {:?}", block);
+            // println!("Block: {:?}", block);
             let fields =
                 extract_iptc_fields_from_block(buffer, block.start_of_block, block.size_of_block);
             for field in fields {
@@ -128,7 +118,7 @@ fn read_iptc_data(
 
                 let tag_key = format!("{}:{}", record_number, dataset_number);
 
-                println!("Field ID: {}, Field: {:?}", tag_key, field);
+                // println!("Field ID: {}, Field: {:?}", tag_key, field);
                 let (name, repeatable, parse) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 
                 if name != IPTCTag::Null {
@@ -179,7 +169,7 @@ fn extract_blocks(
     while i < end {
         // Signature: '8BIM'
         if buffer.get(i..i + 4).ok_or("Invalid slice")? == b"8BIM" {
-            println!("Found 8BIM at {}", i);
+            // println!("Found 8BIM at {}", i);
             // Resource ID is 2 bytes, so use i16BE
             let resource_id = buffer.read_i16be(i + 4);
 
@@ -191,16 +181,17 @@ fn extract_blocks(
 
             let name = String::from_utf8(buffer[i + 6..i + 6 + name_length].to_vec())?;
 
-            println!("Reading block size at i: {}", i + 6 + name_length);
+            // println!("Reading block size at i: {}", i + 6 + name_length);
+
             if i + 6 + name_length + 2 > end {
                 return Err("Invalid offset for block size".into());
             }
             let block_size = buffer.read_u16be(i + 6 + name_length) as usize;
 
-            println!(
-                "i: {}, name_length: {}, block_size: {}",
-                i, name_length, block_size
-            );
+            // println!(
+            //     "i: {}, name: {}, name_length: {}, block_size: {}",
+            //     i, name, name_length, block_size
+            // );
 
             blocks.push(Block {
                 resource_id,
@@ -212,7 +203,7 @@ fn extract_blocks(
             i += 6 + name_length + 4;
             i += block_size;
         } else {
-            println!("Not 8BIM at {}: {:?}", i, buffer.get(i..i + 4));
+            // println!("Not 8BIM at {}: {:?}", i, buffer.get(i..i + 4));
             i += 1;
         }
     }
@@ -237,10 +228,10 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
             let record_number = buffer[i + 1];
             let dataset_number = buffer[i + 2];
 
-            println!(
-                "Field at i: {}, length: {}, record_number: {}, dataset_number: {}",
-                i, value_length, record_number, dataset_number
-            );
+            // println!(
+            //     "Field at i: {}, length: {}, record_number: {}, dataset_number: {}",
+            //     i, value_length, record_number, dataset_number
+            // );
             if i + 5 + value_length <= end {
                 let raw_bytes = &buffer[i + 5..i + 5 + value_length];
                 let value = raw_bytes

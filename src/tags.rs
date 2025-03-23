@@ -111,7 +111,7 @@ impl TagsMap {
             // 0x0100 blocks
             (0x010000, (IPTCTag::ModelVersion, false, PARSE_SHORT)),
             (0x014600, (IPTCTag::DateSent, false, PARSE_FN)),
-            (0x015000, (IPTCTag::TimeSent, false, PARSE_FN)),
+            (0x010050, (IPTCTag::TimeSent, false, PARSE_FN)),
             (0x015a00, (IPTCTag::CodedCharacterSet, false, PARSE_FN)),
             // 0x0200 blocks
             (0x020000, (IPTCTag::RecordVersion, false, PARSE_SHORT)),

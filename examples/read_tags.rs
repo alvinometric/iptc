@@ -4,7 +4,7 @@ use std::error::Error;
 use std::path::Path;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let image_path = Path::new("DSC00512.jpg");
+    let image_path = Path::new("smiley.jpg");
 
     let iptc = IPTC::read_from_path(&image_path)?;
 
@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("keywords: {}", keywords);
     println!(
         "ApplicationRecordVersion: {}",
-        iptc.get(IPTCTag::ApplicationRecordVersion)
+        iptc.get(IPTCTag::RecordVersion)
     );
     Ok(())
 }

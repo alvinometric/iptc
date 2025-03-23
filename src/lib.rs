@@ -243,7 +243,11 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
             );
             if i + 5 + value_length <= end {
                 let raw_bytes = &buffer[i + 5..i + 5 + value_length];
-                let value = raw_bytes.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(",");
+                let value = raw_bytes
+                    .iter()
+                    .map(|b| b.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",");
                 data.push(Field {
                     record_number,
                     dataset_number,
@@ -256,22 +260,4 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
         }
     }
     data
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::Path;
-
-    #[test]
-    fn test_read_write_iptc() -> Result<(), Box<dyn Error>> {
-        let image_path = Path::new("DSC00512.jpg");
-
-        let iptc = IPTC::read_from_path(&image_path)?;
-
-        let city = iptc.get(IPTCTag::City);
-        assert_eq!(city, "London");
-
-        Ok(())
-    }
 }

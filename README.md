@@ -1,6 +1,6 @@
 # IPTC
 
-WIP, obviously
+Read IPTC tags from JPEG files, in pure Rust.
 
 ## Example
 

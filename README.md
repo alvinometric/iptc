@@ -1,5 +1,7 @@
 # IPTC
 
+[![Crates.io](https://img.shields.io/crates/v/iptc)](https://crates.io/crates/iptc)
+
 Read IPTC tags from JPEG files, in pure Rust.
 
 ## Example
@@ -11,13 +13,7 @@ use std::path::Path;
 let image_path = Path::new("image.png");
 let mut tags = IPTC::read_from_path(&image_path);
 
-let city = tags.get(IPTCTags::City)
+let city = tags.get(IPTCTag::City)
 
 assert_eq!(city, "London");
-
-tags.set_city("Oslo")
-    .set_country("Norway")
-    .set_keywords(vec!["keyword1", "keyword2"]);
-
-tags.write_to_file(&image_path)?;
 ```

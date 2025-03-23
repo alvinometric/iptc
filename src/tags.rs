@@ -105,16 +105,20 @@ const PARSE_SHORT: ParseFn = parse_short;
 
 pub const NULL_BLOCK: TagBlock = (IPTCTag::Null, false, PARSE_FN);
 
+// https://github.com/bpatrik/ts-node-iptc
+// In the IPTC standard, tags are identified by a record number and dataset number.
+// Here, these are combined with: (record_number << 16) | dataset_number.
+// This is because I could only find a mapping of binary -> tag and not of record+dataset -> tag.
 impl TagsMap {
     pub fn new() -> Self {
         let map: HashMap<u32, TagBlock> = [
             // 0x0100 blocks
             (0x010000, (IPTCTag::ModelVersion, false, PARSE_SHORT)),
-            (0x014600, (IPTCTag::DateSent, false, PARSE_FN)),
+            (0x010046, (IPTCTag::DateSent, false, PARSE_FN)),
             (0x010050, (IPTCTag::TimeSent, false, PARSE_FN)),
-            (0x015a00, (IPTCTag::CodedCharacterSet, false, PARSE_FN)),
+            (0x01005a, (IPTCTag::CodedCharacterSet, false, PARSE_FN)),
             // 0x0200 blocks
-            (0x020000, (IPTCTag::RecordVersion, false, PARSE_SHORT)),
+            (0x020000, (IPTCTag::RecordVersion, false, PARSE_FN)),
             (0x020003, (IPTCTag::ObjectTypeReference, false, PARSE_FN)),
             (
                 0x020004,
@@ -199,7 +203,7 @@ impl TagsMap {
             ),
             (0x0200ca, (IPTCTag::ObjectPreviewData, false, PARSE_FN)),
             // 0x0700 blocks
-            (0x070a00, (IPTCTag::SizeMode, false, PARSE_FN)),
+            (0x07000a, (IPTCTag::SizeMode, false, PARSE_FN)),
         ]
         .into_iter()
         .collect();

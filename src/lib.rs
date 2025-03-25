@@ -31,6 +31,7 @@ impl IPTC {
         let file = File::open(image_path)?;
         let bufreader = BufReader::new(file);
         let img_reader = ImageReader::new(bufreader).with_guessed_format()?;
+        let format = img_reader.format()?;
         let _image = img_reader.decode()?;
 
         let file = File::open(image_path)?;
@@ -39,6 +40,10 @@ impl IPTC {
         bufreader.read_to_end(&mut buffer)?;
 
         let mut offset = 0;
+
+        if format == image::ImageFormat::Tiff {
+            println!("It's a tiff");
+        }
 
         // Check for JPEG magic bytes header
         if buffer[0] != 0xFF || buffer[1] != 0xD8 {

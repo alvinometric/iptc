@@ -31,7 +31,7 @@ impl IPTC {
         let file = File::open(image_path)?;
         let bufreader = BufReader::new(file);
         let img_reader = ImageReader::new(bufreader).with_guessed_format()?;
-        let format = img_reader.format()?;
+        let format = img_reader.format().ok_or("Image format not supported")?;
         let _image = img_reader.decode()?;
 
         let file = File::open(image_path)?;

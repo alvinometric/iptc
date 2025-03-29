@@ -34,38 +34,38 @@ impl TIFFReader {
 
         println!("Bytes: {:?}", bytes);
 
-        // Uncomment this once the bytes are correct
-        // let data = read_xmp_data(&bytes)?;
-        // println!("Data: {:?}", data);
+        // Parse the XMP data
+        let data = read_xmp_data(&bytes)?;
+        println!("Data: {:?}", data);
 
-        Ok(HashMap::new())
+        Ok(data) // Return the parsed data instead of empty HashMap
     }
 }
 
 fn read_xmp_data(data: &[u8]) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
-    // Debug print the raw bytes and as string
-    println!("Raw bytes: {:?}", data);
-    println!("As string: {}", String::from_utf8_lossy(data));
-
     let parser = EventReader::new(Cursor::new(data));
     let mut iptc_data = HashMap::new();
     let mut current_tag: Option<IPTCTag> = None;
+    let mut in_creator_seq = false;
 
     for event in parser {
         match event? {
-            XmlEvent::StartElement { name, .. } => {
-                current_tag = match name.local_name.as_str() {
-                    "creator" => Some(IPTCTag::ByLine),
-                    "title" => Some(IPTCTag::ByLineTitle),
-                    _ => None,
-                };
-            }
+            XmlEvent::StartElement { name, .. } => match name.local_name.as_str() {
+                "creator" => in_creator_seq = true,
+                "li" if in_creator_seq => current_tag = Some(IPTCTag::ByLine),
+                "Caption" => current_tag = Some(IPTCTag::Caption),
+                "Description" => current_tag = Some(IPTCTag::Caption),
+                _ => {}
+            },
             XmlEvent::Characters(data) => {
                 if let Some(tag) = &current_tag {
                     iptc_data.insert(tag.clone(), data);
                 }
             }
-            XmlEvent::EndElement { .. } => {
+            XmlEvent::EndElement { name } => {
+                if name.local_name == "creator" {
+                    in_creator_seq = false;
+                }
                 current_tag = None;
             }
             _ => {}

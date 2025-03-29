@@ -1,3 +1,28 @@
+//! Library to read IPTC tags from JPEG files, in pure Rust.
+//!
+//! # Example
+//! ```rust,no_run
+//! use iptc::IPTC;
+//! use iptc::IPTCTag;
+//! use std::error::Error;
+//! use std::path::Path;
+
+//! fn main() -> Result<(), Box<dyn Error>> {
+//!     let image_path = Path::new("tests/smiley.jpg");
+//!
+//!     let iptc = IPTC::read_from_path(&image_path)?;
+//!
+//!     // See all the tags in the image
+//!     println!("IPTC: {:?}", iptc.get_all());
+//!
+//!     // Get a specific tag
+//!     let keywords = iptc.get(IPTCTag::Keywords);
+//!     println!("keywords: {}", keywords);
+//!
+//!     Ok(())
+//! }
+//! ```
+
 mod jpeg;
 use jpeg::JPEGReader;
 mod tiff;

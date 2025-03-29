@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "iptc"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "image",
  "strum_macros",

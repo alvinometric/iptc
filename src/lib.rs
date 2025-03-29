@@ -1,6 +1,7 @@
 mod jpeg;
 use jpeg::JPEGReader;
 mod tags;
+mod reader;
 use image::{ImageFormat, ImageReader};
 use std::collections::HashMap;
 use std::error::Error;

@@ -1,7 +1,9 @@
 mod jpeg;
 use jpeg::JPEGReader;
-mod tags;
+mod tiff;
+use tiff::TIFFReader;
 mod reader;
+mod tags;
 use image::{ImageFormat, ImageReader};
 use std::collections::HashMap;
 use std::error::Error;
@@ -39,17 +41,16 @@ impl IPTC {
         let mut buffer: Vec<u8> = Vec::new();
         bufreader.read_to_end(&mut buffer)?;
 
-        if format == ImageFormat::Tiff {
-            println!("It's a tiff");
-        }
-
         let mut data = HashMap::new();
 
         // Check if the file is a JPEG
         if format == ImageFormat::Jpeg {
             data = JPEGReader::read_iptc(&buffer)?;
+        } else if format == ImageFormat::Tiff {
+            println!("TIFF file detected");
+            data = TIFFReader::read_iptc(&buffer)?;
         } else {
-            println!("Not a JPEG file, only JPEG files are supported");
+            println!("Unsupported file, only JPEG & Tiff files are supported");
         }
 
         Ok(IPTC { data })

@@ -11,3 +11,4 @@ readme = "README.md"
 [dependencies]
 image = "0.25.5"
 strum_macros = "0.27.1"
+tiff = "0.9.1"

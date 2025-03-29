@@ -1,10 +1,25 @@
-use crate::{ReadUtils, tags};
+use crate::tags;
 use std::collections::HashMap;
 use std::error::Error;
 use tags::IPTCTag;
 use tags::{NULL_BLOCK, TagsMap};
 
 const FIELD_DELIMITER: u8 = 0x1c;
+
+pub trait ReadUtils {
+    fn read_u16be(&self, offset: usize) -> u16;
+    fn read_i16be(&self, offset: usize) -> i16;
+}
+
+impl ReadUtils for Vec<u8> {
+    fn read_u16be(&self, offset: usize) -> u16 {
+        ((self[offset] as u16) << 8) | (self[offset + 1] as u16)
+    }
+
+    fn read_i16be(&self, offset: usize) -> i16 {
+        ((self[offset] as i16) << 8) | (self[offset + 1] as i16)
+    }
+}
 
 #[derive(Debug)]
 struct Block {

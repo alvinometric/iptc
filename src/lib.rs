@@ -72,27 +72,12 @@ impl IPTC {
         if format == ImageFormat::Jpeg {
             data = JPEGReader::read_iptc(&buffer)?;
         } else if format == ImageFormat::Tiff {
-            println!("TIFF file detected");
+            println!("TIFF file detected, not all tags are supported");
             data = TIFFReader::read_iptc(&buffer)?;
         } else {
             println!("Unsupported file, only JPEG & Tiff files are supported");
         }
 
         Ok(IPTC { data })
-    }
-}
-
-trait ReadUtils {
-    fn read_u16be(&self, offset: usize) -> u16;
-    fn read_i16be(&self, offset: usize) -> i16;
-}
-
-impl ReadUtils for Vec<u8> {
-    fn read_u16be(&self, offset: usize) -> u16 {
-        ((self[offset] as u16) << 8) | (self[offset + 1] as u16)
-    }
-
-    fn read_i16be(&self, offset: usize) -> i16 {
-        ((self[offset] as i16) << 8) | (self[offset + 1] as i16)
     }
 }

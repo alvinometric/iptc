@@ -1,5 +1,7 @@
+use crate::reader::ReadUtils;
 use crate::reader::read_iptc_data;
-use crate::{ReadUtils, tags};
+use crate::tags;
+
 use std::collections::HashMap;
 use std::error::Error;
 use tags::IPTCTag;

@@ -1,10 +1,10 @@
-use crate::{ReadUtils, tags};
+use crate::tags;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::Cursor;
 use tags::IPTCTag;
 use tiff::{
-    decoder::{Decoder, DecodingResult, ifd::Value},
+    decoder::{Decoder, ifd::Value},
     tags::Tag,
 };
 use xml::reader::{EventReader, XmlEvent};
@@ -17,6 +17,8 @@ impl TIFFReader {
         let mut decoder = Decoder::new(cursor)?;
 
         let tag_value = decoder.get_tag(Tag::Unknown(700))?;
+
+        // println!("Tag value: {:?}", tag_value);
 
         // Convert the tag value to bytes
         let bytes: Vec<u8> = match tag_value {
@@ -32,17 +34,19 @@ impl TIFFReader {
             _ => vec![],
         };
 
-        println!("Bytes: {:?}", bytes);
+        // println!("Bytes: {:?}", bytes);
 
         // Parse the XMP data
         let data = read_xmp_data(&bytes)?;
-        println!("Data: {:?}", data);
 
-        Ok(data) // Return the parsed data instead of empty HashMap
+        Ok(data)
     }
 }
 
 fn read_xmp_data(data: &[u8]) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
+    // println!("Raw bytes: {:?}", data);
+    // println!("As string: {}", String::from_utf8_lossy(data));
+
     let parser = EventReader::new(Cursor::new(data));
     let mut iptc_data = HashMap::new();
     let mut current_tag: Option<IPTCTag> = None;
@@ -50,16 +54,39 @@ fn read_xmp_data(data: &[u8]) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>
 
     for event in parser {
         match event? {
-            XmlEvent::StartElement { name, .. } => match name.local_name.as_str() {
-                "creator" => in_creator_seq = true,
-                "li" if in_creator_seq => current_tag = Some(IPTCTag::ByLine),
-                "Caption" => current_tag = Some(IPTCTag::Caption),
-                "Description" => current_tag = Some(IPTCTag::Caption),
-                _ => {}
-            },
+            XmlEvent::StartElement {
+                name, attributes, ..
+            } => {
+                match name.local_name.as_str() {
+                    "creator" => in_creator_seq = true,
+                    "li" if in_creator_seq => current_tag = Some(IPTCTag::ByLine),
+                    "Description" => {
+                        // Look for photoshop:State and photoshop:Country in attributes
+                        for attr in attributes {
+                            if attr.name.prefix.as_deref() == Some("photoshop") {
+                                match attr.name.local_name.as_str() {
+                                    "State" => {
+                                        iptc_data.insert(IPTCTag::ProvinceOrState, attr.value);
+                                    }
+                                    "Country" => {
+                                        iptc_data.insert(
+                                            IPTCTag::CountryOrPrimaryLocationName,
+                                            attr.value,
+                                        );
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
             XmlEvent::Characters(data) => {
                 if let Some(tag) = &current_tag {
-                    iptc_data.insert(tag.clone(), data);
+                    if !data.trim().is_empty() {
+                        iptc_data.insert(tag.clone(), data);
+                    }
                 }
             }
             XmlEvent::EndElement { name } => {

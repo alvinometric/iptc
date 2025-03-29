@@ -8,6 +8,8 @@ homepage = "https://github.com/alvinometric/iptc"
 repository = "https://github.com/alvinometric/iptc"
 readme = "README.md"
 
+exclude = ["tests"]
+
 [dependencies]
 image = "0.25.5"
 strum_macros = "0.27.1"

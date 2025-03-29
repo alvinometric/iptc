@@ -9,12 +9,22 @@ Read IPTC tags from JPEG files, in pure Rust.
 
 ```rs
 use iptc::IPTC;
+use iptc::IPTCTag;
+use std::error::Error;
 use std::path::Path;
 
-let image_path = Path::new("image.png");
-let mut tags = IPTC::read_from_path(&image_path);
+fn main() -> Result<(), Box<dyn Error>> {
+    let image_path = Path::new("tests/smiley.jpg");
 
-let city = tags.get(IPTCTag::City)
+    let iptc = IPTC::read_from_path(&image_path)?;
 
-assert_eq!(city, "London");
+    // See all the tags in the image
+    println!("IPTC: {:?}", iptc.get_all());
+
+    // Get a specific tag
+    let keywords = iptc.get(IPTCTag::Keywords);
+    println!("keywords: {}", keywords);
+
+    Ok(())
+}
 ```

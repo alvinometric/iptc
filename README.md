@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/iptc)](https://crates.io/crates/iptc)
 [![CI Build](https://github.com/alvinometric/iptc/actions/workflows/rust.yml/badge.svg)](https://github.com/alvinometric/iptc/actions/workflows/rust.yml)
 
-Read IPTC tags from JPEG files, in pure Rust.
+Read IPTC tags from JPEG files in pure Rust, with partial support for Tiff files.
 
 ## Example
 

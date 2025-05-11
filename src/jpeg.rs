@@ -190,8 +190,22 @@ impl JPEGReader {
                 let tag_key = format!("{}:{}", record, dataset);
                 let (_, repeatable, parse_fn) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 
-                // Write each value as a separate entry for repeatable fields
-                for value in values {
+                // For non-repeatable fields, only use the first value
+                let values_to_write = if repeatable {
+                    values
+                } else {
+                    // Take just the first value for non-repeatable fields
+                    if values.len() > 1 {
+                        println!(
+                            "Warning: Multiple values provided for non-repeatable field {:?}, using only the first value",
+                            tag
+                        );
+                    }
+                    &values[..1]
+                };
+
+                // Write each value as a separate entry
+                for value in values_to_write {
                     // Field delimiter
                     iptc_block.push(0x1C);
 

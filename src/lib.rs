@@ -29,20 +29,18 @@ mod tiff;
 use tiff::TIFFReader;
 mod reader;
 mod tags;
-use image::{ImageFormat, ImageReader};
+use image::ImageFormat;
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::File;
-use std::io::{BufReader, Read};
 use std::path::Path;
 pub use tags::IPTCTag;
 
 pub struct IPTC {
-    pub data: HashMap<IPTCTag, String>,
+    pub data: HashMap<IPTCTag, Vec<String>>,
 }
 
 impl IPTC {
-    pub fn get_all(&self) -> HashMap<IPTCTag, String> {
+    pub fn get_all(&self) -> HashMap<IPTCTag, Vec<String>> {
         self.data.clone()
     }
 
@@ -51,15 +49,23 @@ impl IPTC {
         if returned_tag == None {
             return String::new();
         }
-        returned_tag.unwrap().clone()
+        returned_tag.unwrap().join(", ")
     }
 
     pub fn set_tag(&mut self, tag: IPTCTag, value: &str) {
-        self.data.insert(tag, value.to_string());
+        if let Some(values) = self.data.get_mut(&tag) {
+            // For repeatable fields, add to the vector if not already present
+            if !values.contains(&value.to_string()) {
+                values.push(value.to_string());
+            }
+        } else {
+            // For new fields, start a new vector
+            self.data.insert(tag, vec![value.to_string()]);
+        }
     }
 
     pub fn write_to_file(&self, image_path: &Path) -> Result<(), Box<dyn Error>> {
-        let mut buffer = std::fs::read(image_path)?;
+        let buffer = std::fs::read(image_path)?;
         let format = image::guess_format(&buffer)?;
 
         let new_buffer = if format == ImageFormat::Jpeg {
@@ -76,17 +82,20 @@ impl IPTC {
         let buffer = std::fs::read(image_path)?;
         let format = image::guess_format(&buffer)?;
 
-        let mut data = HashMap::new();
+        let mut string_data = HashMap::new();
 
         // Check if the file is a JPEG
         if format == ImageFormat::Jpeg {
-            data = JPEGReader::read_iptc(&buffer)?;
+            string_data = JPEGReader::read_iptc(&buffer)?;
         } else if format == ImageFormat::Tiff {
             println!("TIFF file detected, not all tags are supported");
-            data = TIFFReader::read_iptc(&buffer)?;
+            string_data = TIFFReader::read_iptc(&buffer)?;
         } else {
             println!("Unsupported file, only JPEG & Tiff files are supported");
         }
+
+        // Convert String to Vec<String>
+        let data = string_data.into_iter().map(|(k, v)| (k, vec![v])).collect();
 
         Ok(IPTC { data })
     }

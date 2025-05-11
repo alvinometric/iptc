@@ -46,7 +46,7 @@ impl JPEGReader {
 
     pub fn write_iptc(
         buffer: &Vec<u8>,
-        data: &HashMap<IPTCTag, String>,
+        data: &HashMap<IPTCTag, Vec<String>>,
     ) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut new_buffer = Vec::new();
 
@@ -160,7 +160,9 @@ impl JPEGReader {
         Ok(new_buffer)
     }
 
-    fn convert_iptc_to_binary(data: &HashMap<IPTCTag, String>) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn convert_iptc_to_binary(
+        data: &HashMap<IPTCTag, Vec<String>>,
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut binary = Vec::new();
         let tags_map = TagsMap::new();
 
@@ -182,36 +184,39 @@ impl JPEGReader {
         });
 
         // Add IPTC data in sorted order
-        for (tag, value) in sorted_tags {
+        for (tag, values) in sorted_tags {
             if let Some((record, dataset)) = Self::get_record_dataset(tag) {
-                // Field delimiter
-                iptc_block.push(0x1C);
-
-                // Record number and dataset number
-                iptc_block.push(record);
-                iptc_block.push(dataset);
-
                 // Get the tag format
                 let tag_key = format!("{}:{}", record, dataset);
-                let (_, _, parse_fn) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
+                let (_, repeatable, parse_fn) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 
-                // Convert value based on tag format
-                let value_bytes = if parse_fn as usize == parse_short as usize {
-                    // For short values, convert string to u16 and then to bytes
-                    let num_val = value.parse::<u16>().unwrap_or(0);
-                    vec![(num_val >> 8) as u8, num_val as u8]
-                } else {
-                    // For regular strings, just use UTF-8 bytes
-                    value.as_bytes().to_vec()
-                };
+                // Write each value as a separate entry for repeatable fields
+                for value in values {
+                    // Field delimiter
+                    iptc_block.push(0x1C);
 
-                // Value length (big endian)
-                let value_len = value_bytes.len() as u16;
-                iptc_block.push((value_len >> 8) as u8);
-                iptc_block.push(value_len as u8);
+                    // Record number and dataset number
+                    iptc_block.push(record);
+                    iptc_block.push(dataset);
 
-                // Value
-                iptc_block.extend_from_slice(&value_bytes);
+                    // Convert value based on tag format
+                    let value_bytes = if parse_fn as usize == parse_short as usize {
+                        // For short values, convert string to u16 and then to bytes
+                        let num_val = value.parse::<u16>().unwrap_or(0);
+                        vec![(num_val >> 8) as u8, num_val as u8]
+                    } else {
+                        // For regular strings, just use UTF-8 bytes
+                        value.as_bytes().to_vec()
+                    };
+
+                    // Value length (big endian)
+                    let value_len = value_bytes.len() as u16;
+                    iptc_block.push((value_len >> 8) as u8);
+                    iptc_block.push(value_len as u8);
+
+                    // Value
+                    iptc_block.extend_from_slice(&value_bytes);
+                }
             }
         }
 

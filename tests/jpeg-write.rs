@@ -18,7 +18,12 @@ fn test_write_iptc() -> Result<(), Box<dyn Error>> {
 
     // Modify some tags
     iptc.set_tag(IPTCTag::City, "Oslo");
-    iptc.set_tag(IPTCTag::Keywords, "New keyword");
+
+    // Set multiple keywords as separate entries
+    let keywords = vec!["rust", "metadata", "testing", "iptc"];
+    for keyword in keywords.iter() {
+        iptc.set_tag(IPTCTag::Keywords, keyword);
+    }
 
     // Write the changes
     iptc.write_to_file(&test_path)?;
@@ -29,7 +34,16 @@ fn test_write_iptc() -> Result<(), Box<dyn Error>> {
     // Read back and verify
     let new_iptc = IPTC::read_from_path(&test_path)?;
     assert_eq!(new_iptc.get(IPTCTag::City), "Oslo");
-    assert_eq!(new_iptc.get(IPTCTag::Keywords), "New keyword");
+
+    // Verify all keywords are present
+    let read_keywords = new_iptc.get(IPTCTag::Keywords);
+    for keyword in keywords {
+        assert!(
+            read_keywords.contains(keyword),
+            "Missing keyword: {}",
+            keyword
+        );
+    }
 
     // Clean up
     fs::remove_file(test_path)?;

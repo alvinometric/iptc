@@ -91,7 +91,7 @@ fn default_parse(s: String) -> String {
     String::from_utf8(bytes).unwrap_or_default()
 }
 
-fn parse_short(s: String) -> String {
+pub(crate) fn parse_short(s: String) -> String {
     // Convert bytes to number, big endian
     let bytes: Vec<u8> = s.split(',').map(|b| b.parse::<u8>().unwrap_or(0)).collect();
 
@@ -110,8 +110,7 @@ pub const NULL_BLOCK: TagBlock = (IPTCTag::Null, false, PARSE_FN);
 
 // https://exiftool.org/TagNames/IPTC.html
 // In the IPTC standard, tags are identified by a record number and dataset number.
-// These are in the map as "record:dataset" -> tag.
-// This is because I could only find a mapping of binary -> tag and not of record+dataset -> tag.
+// These are in the map as a string of "record:dataset" -> tag.
 impl TagsMap {
     pub(crate) fn new() -> Self {
         let map: HashMap<String, TagBlock> = [

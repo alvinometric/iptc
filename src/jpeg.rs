@@ -2,6 +2,7 @@ use crate::reader::ReadUtils;
 use crate::reader::read_iptc_data;
 use crate::tags;
 use crate::tags::TagsMap;
+use crate::tags::{NULL_BLOCK, parse_short};
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -161,6 +162,7 @@ impl JPEGReader {
 
     fn convert_iptc_to_binary(data: &HashMap<IPTCTag, String>) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut binary = Vec::new();
+        let tags_map = TagsMap::new();
 
         // Add Photoshop header
         binary.extend_from_slice(b"Photoshop 3.0\0");
@@ -169,8 +171,18 @@ impl JPEGReader {
         // Add 8BIM marker and IPTC block
         let mut iptc_block = Vec::new();
 
-        // Add IPTC data
-        for (tag, value) in data {
+        // Sort tags by record and dataset numbers
+        let mut sorted_tags: Vec<_> = data.iter().collect();
+        sorted_tags.sort_by_key(|(tag, _)| {
+            if let Some((record, dataset)) = Self::get_record_dataset(tag) {
+                (record, dataset)
+            } else {
+                (0, 0) // Put unknown tags at the start
+            }
+        });
+
+        // Add IPTC data in sorted order
+        for (tag, value) in sorted_tags {
             if let Some((record, dataset)) = Self::get_record_dataset(tag) {
                 // Field delimiter
                 iptc_block.push(0x1C);
@@ -179,14 +191,27 @@ impl JPEGReader {
                 iptc_block.push(record);
                 iptc_block.push(dataset);
 
+                // Get the tag format
+                let tag_key = format!("{}:{}", record, dataset);
+                let (_, _, parse_fn) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
+
+                // Convert value based on tag format
+                let value_bytes = if parse_fn as usize == parse_short as usize {
+                    // For short values, convert string to u16 and then to bytes
+                    let num_val = value.parse::<u16>().unwrap_or(0);
+                    vec![(num_val >> 8) as u8, num_val as u8]
+                } else {
+                    // For regular strings, just use UTF-8 bytes
+                    value.as_bytes().to_vec()
+                };
+
                 // Value length (big endian)
-                let value_bytes = value.as_bytes();
                 let value_len = value_bytes.len() as u16;
                 iptc_block.push((value_len >> 8) as u8);
                 iptc_block.push(value_len as u8);
 
                 // Value
-                iptc_block.extend_from_slice(value_bytes);
+                iptc_block.extend_from_slice(&value_bytes);
             }
         }
 

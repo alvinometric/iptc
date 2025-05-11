@@ -41,4 +41,197 @@ impl JPEGReader {
 
         Ok(HashMap::new())
     }
+
+    pub fn write_iptc(
+        buffer: &Vec<u8>,
+        data: &HashMap<IPTCTag, String>,
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut new_buffer = Vec::new();
+
+        // Copy the initial JPEG marker (SOI)
+        if buffer.len() < 2 || buffer[0] != 0xFF || buffer[1] != 0xD8 {
+            return Err("Not a valid JPEG file".into());
+        }
+        new_buffer.extend_from_slice(&buffer[0..2]);
+        let mut offset = 2;
+
+        // Convert IPTC data to binary format first
+        let iptc_data = Self::convert_iptc_to_binary(data)?;
+        let mut found_app13 = false;
+        let mut inserted_app13 = false;
+
+        // Copy segments until we find SOS
+        while offset + 1 < buffer.len() {
+            // Every JPEG segment must start with 0xFF
+            if buffer[offset] != 0xFF {
+                offset += 1;
+                continue;
+            }
+
+            let marker = buffer[offset + 1];
+
+            // Skip empty markers
+            if marker == 0xFF {
+                offset += 1;
+                continue;
+            }
+
+            // For markers without length field
+            if marker == 0x00 || marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7) {
+                new_buffer.extend_from_slice(&buffer[offset..offset + 2]);
+                offset += 2;
+                continue;
+            }
+
+            // End of image marker
+            if marker == 0xD9 {
+                new_buffer.extend_from_slice(&buffer[offset..offset + 2]);
+                break;
+            }
+
+            // Start of scan marker - copy the rest of the file
+            if marker == 0xDA {
+                // If we haven't inserted APP13 yet, do it now
+                if !found_app13 && !inserted_app13 {
+                    // Write APP13 marker
+                    new_buffer.extend_from_slice(&[0xFF, 0xED]);
+                    // Write length (including length bytes)
+                    let total_length = (iptc_data.len() + 2) as u16;
+                    new_buffer.push((total_length >> 8) as u8);
+                    new_buffer.push(total_length as u8);
+                    // Write IPTC data
+                    new_buffer.extend_from_slice(&iptc_data);
+                }
+
+                // Copy SOS marker and all remaining data
+                new_buffer.extend_from_slice(&buffer[offset..]);
+                break;
+            }
+
+            // Check if we can read the length
+            if offset + 3 >= buffer.len() {
+                new_buffer.extend_from_slice(&buffer[offset..]);
+                break;
+            }
+
+            let length = buffer.read_u16be(offset + 2) as usize;
+
+            // Validate segment length
+            if length < 2 || offset + 2 + length > buffer.len() {
+                new_buffer.extend_from_slice(&buffer[offset..]);
+                break;
+            }
+
+            // If this is APP13, replace it with our new data
+            if marker == 0xED {
+                found_app13 = true;
+                // Write APP13 marker
+                new_buffer.extend_from_slice(&[0xFF, 0xED]);
+                // Write length (including length bytes)
+                let total_length = (iptc_data.len() + 2) as u16;
+                new_buffer.push((total_length >> 8) as u8);
+                new_buffer.push(total_length as u8);
+                // Write IPTC data
+                new_buffer.extend_from_slice(&iptc_data);
+                offset += 2 + length;
+            } else {
+                // If we haven't found APP13 and this is after APP0/APP1 but before other segments,
+                // insert our APP13 data here
+                if !found_app13 && !inserted_app13 && marker > 0xE1 {
+                    // Write APP13 marker
+                    new_buffer.extend_from_slice(&[0xFF, 0xED]);
+                    // Write length (including length bytes)
+                    let total_length = (iptc_data.len() + 2) as u16;
+                    new_buffer.push((total_length >> 8) as u8);
+                    new_buffer.push(total_length as u8);
+                    // Write IPTC data
+                    new_buffer.extend_from_slice(&iptc_data);
+                    inserted_app13 = true;
+                }
+
+                // Copy the marker and its data
+                new_buffer.extend_from_slice(&buffer[offset..offset + 2 + length]);
+                offset += 2 + length;
+            }
+        }
+
+        Ok(new_buffer)
+    }
+
+    fn convert_iptc_to_binary(data: &HashMap<IPTCTag, String>) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut binary = Vec::new();
+
+        // Add Photoshop header
+        binary.extend_from_slice(b"Photoshop 3.0\0");
+        binary.push(0x00); // Pad to even length
+
+        // Add 8BIM marker and IPTC block
+        let mut iptc_block = Vec::new();
+
+        // Add IPTC data
+        for (tag, value) in data {
+            if let Some((record, dataset)) = Self::get_record_dataset(tag) {
+                // Field delimiter
+                iptc_block.push(0x1C);
+
+                // Record number and dataset number
+                iptc_block.push(record);
+                iptc_block.push(dataset);
+
+                // Value length (big endian)
+                let value_bytes = value.as_bytes();
+                let value_len = value_bytes.len() as u16;
+                iptc_block.push((value_len >> 8) as u8);
+                iptc_block.push(value_len as u8);
+
+                // Value
+                iptc_block.extend_from_slice(value_bytes);
+            }
+        }
+
+        // Add 8BIM marker
+        binary.extend_from_slice(b"8BIM");
+
+        // Resource ID for IPTC (0x0404)
+        binary.extend_from_slice(&[0x04, 0x04]);
+
+        // Empty name (padded to even length)
+        binary.push(0x00);
+        binary.push(0x00);
+
+        // Block size (big endian)
+        let block_size = iptc_block.len() as u32;
+        binary.extend_from_slice(&[
+            (block_size >> 24) as u8,
+            (block_size >> 16) as u8,
+            (block_size >> 8) as u8,
+            block_size as u8,
+        ]);
+
+        // Add the IPTC block
+        binary.extend_from_slice(&iptc_block);
+
+        // Pad to even length if needed
+        if binary.len() % 2 != 0 {
+            binary.push(0x00);
+        }
+
+        Ok(binary)
+    }
+
+    fn get_record_dataset(tag: &IPTCTag) -> Option<(u8, u8)> {
+        match tag {
+            IPTCTag::City => Some((2, 90)),
+            IPTCTag::Keywords => Some((2, 25)),
+            IPTCTag::ByLine => Some((2, 80)),
+            IPTCTag::Caption => Some((2, 120)),
+            IPTCTag::CopyrightNotice => Some((2, 116)),
+            IPTCTag::Credit => Some((2, 110)),
+            IPTCTag::Headline => Some((2, 105)),
+            IPTCTag::ObjectName => Some((2, 5)),
+            IPTCTag::Source => Some((2, 115)),
+            IPTCTag::Urgency => Some((2, 10)),
+            _ => None,
+        }
+    }
 }

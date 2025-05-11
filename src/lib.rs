@@ -54,6 +54,31 @@ impl IPTC {
         returned_tag.unwrap().clone()
     }
 
+    pub fn set_tag(&mut self, tag: IPTCTag, value: &str) {
+        self.data.insert(tag, value.to_string());
+    }
+
+    pub fn write_to_file(&self, image_path: &Path) -> Result<(), Box<dyn Error>> {
+        let file = File::open(image_path)?;
+        let bufreader = BufReader::new(file);
+        let img_reader = ImageReader::new(bufreader).with_guessed_format()?;
+        let format = img_reader.format().ok_or("Image format not supported")?;
+
+        let file = File::open(image_path)?;
+        let mut bufreader = BufReader::new(file);
+        let mut buffer: Vec<u8> = Vec::new();
+        bufreader.read_to_end(&mut buffer)?;
+
+        let new_buffer = if format == ImageFormat::Jpeg {
+            JPEGReader::write_iptc(&buffer, &self.data)?
+        } else {
+            return Err("Writing IPTC data is only supported for JPEG files".into());
+        };
+
+        std::fs::write(image_path, new_buffer)?;
+        Ok(())
+    }
+
     pub fn read_from_path(image_path: &Path) -> Result<Self, Box<dyn Error>> {
         let file = File::open(image_path)?;
         let bufreader = BufReader::new(file);

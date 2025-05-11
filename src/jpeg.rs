@@ -1,6 +1,7 @@
 use crate::reader::ReadUtils;
 use crate::reader::read_iptc_data;
 use crate::tags;
+use crate::tags::TagsMap;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -220,18 +221,7 @@ impl JPEGReader {
     }
 
     fn get_record_dataset(tag: &IPTCTag) -> Option<(u8, u8)> {
-        match tag {
-            IPTCTag::City => Some((2, 90)),
-            IPTCTag::Keywords => Some((2, 25)),
-            IPTCTag::ByLine => Some((2, 80)),
-            IPTCTag::Caption => Some((2, 120)),
-            IPTCTag::CopyrightNotice => Some((2, 116)),
-            IPTCTag::Credit => Some((2, 110)),
-            IPTCTag::Headline => Some((2, 105)),
-            IPTCTag::ObjectName => Some((2, 5)),
-            IPTCTag::Source => Some((2, 115)),
-            IPTCTag::Urgency => Some((2, 10)),
-            _ => None,
-        }
+        let tags_map = TagsMap::new();
+        tags_map.get_record_dataset(tag)
     }
 }

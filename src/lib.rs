@@ -59,15 +59,8 @@ impl IPTC {
     }
 
     pub fn write_to_file(&self, image_path: &Path) -> Result<(), Box<dyn Error>> {
-        let file = File::open(image_path)?;
-        let bufreader = BufReader::new(file);
-        let img_reader = ImageReader::new(bufreader).with_guessed_format()?;
-        let format = img_reader.format().ok_or("Image format not supported")?;
-
-        let file = File::open(image_path)?;
-        let mut bufreader = BufReader::new(file);
-        let mut buffer: Vec<u8> = Vec::new();
-        bufreader.read_to_end(&mut buffer)?;
+        let mut buffer = std::fs::read(image_path)?;
+        let format = image::guess_format(&buffer)?;
 
         let new_buffer = if format == ImageFormat::Jpeg {
             JPEGReader::write_iptc(&buffer, &self.data)?
@@ -80,16 +73,8 @@ impl IPTC {
     }
 
     pub fn read_from_path(image_path: &Path) -> Result<Self, Box<dyn Error>> {
-        let file = File::open(image_path)?;
-        let bufreader = BufReader::new(file);
-        let img_reader = ImageReader::new(bufreader).with_guessed_format()?;
-        let format = img_reader.format().ok_or("Image format not supported")?;
-        let _image = img_reader.decode()?;
-
-        let file = File::open(image_path)?;
-        let mut bufreader = BufReader::new(file);
-        let mut buffer: Vec<u8> = Vec::new();
-        bufreader.read_to_end(&mut buffer)?;
+        let buffer = std::fs::read(image_path)?;
+        let format = image::guess_format(&buffer)?;
 
         let mut data = HashMap::new();
 

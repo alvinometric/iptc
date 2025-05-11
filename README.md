@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/iptc)](https://crates.io/crates/iptc)
 [![CI Build](https://github.com/alvinometric/iptc/actions/workflows/rust.yml/badge.svg)](https://github.com/alvinometric/iptc/actions/workflows/rust.yml)
 
-A fast, lightweight library to read **and write** IPTC metadata in JPEG files, written in pure Rust. Also includes partial support for TIFF files.
+A fast, lightweight crate to read **and write** IPTC metadata in JPEG files, in pure Rust. Also includes partial support for TIFF files.
 
 ## Features
 

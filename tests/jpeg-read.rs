@@ -32,3 +32,29 @@ fn exiv2_iptc_example() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+#[test]
+fn street_photo_example() -> Result<(), Box<dyn Error>> {
+    let image_path = Path::new("tests/DSC00512.jpg");
+    let iptc = IPTC::read_from_path(&image_path)?;
+
+    let tags = iptc.get_all();
+    println!("IPTC: {:?}", tags);
+
+    let date_created = iptc.get(IPTCTag::DateCreated);
+    assert_eq!(date_created, "20190519");
+
+    let time_created = iptc.get(IPTCTag::TimeCreated);
+    assert_eq!(time_created, "162932+0000");
+
+    let keywords = iptc.get(IPTCTag::Keywords);
+    assert_eq!(keywords, "London, England, Street, Night");
+
+    let city = iptc.get(IPTCTag::City);
+    assert_eq!(city, "London");
+
+    let country = iptc.get(IPTCTag::CountryOrPrimaryLocationName);
+    assert_eq!(country, "UK");
+
+    Ok(())
+}

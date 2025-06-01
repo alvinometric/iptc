@@ -11,7 +11,7 @@ use tags::IPTCTag;
 pub(crate) struct JPEGReader;
 
 impl JPEGReader {
-    pub fn read_iptc(buffer: &Vec<u8>) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
+    pub fn read_iptc(buffer: &[u8]) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
         let mut offset = 0;
         offset += 2;
 
@@ -30,7 +30,7 @@ impl JPEGReader {
             if application_marker == 237 {
                 // This is our marker. The content length is 2 byte number.
                 let iptc_data = read_iptc_data(
-                    &buffer,
+                    buffer,
                     offset + 4,
                     (&buffer).read_u16be(offset + 2) as usize,
                 )?;
@@ -45,7 +45,7 @@ impl JPEGReader {
     }
 
     pub fn write_iptc(
-        buffer: &Vec<u8>,
+        buffer: &[u8],
         data: &HashMap<IPTCTag, Vec<String>>,
     ) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut new_buffer = Vec::new();

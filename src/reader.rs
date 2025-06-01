@@ -11,7 +11,7 @@ pub trait ReadUtils {
     fn read_i16be(&self, offset: usize) -> i16;
 }
 
-impl ReadUtils for Vec<u8> {
+impl ReadUtils for [u8] {
     fn read_u16be(&self, offset: usize) -> u16 {
         ((self[offset] as u16) << 8) | (self[offset + 1] as u16)
     }
@@ -24,6 +24,7 @@ impl ReadUtils for Vec<u8> {
 #[derive(Debug)]
 struct Block {
     resource_id: i16,
+    #[allow(unused)]
     name: String,
     start_of_block: usize,
     size_of_block: usize,
@@ -36,7 +37,7 @@ struct Field {
     value: String,
 }
 
-fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize) -> Vec<Field> {
+fn extract_iptc_fields_from_block(buffer: &[u8], start: usize, length: usize) -> Vec<Field> {
     let mut data: Vec<Field> = Vec::new();
     let end = std::cmp::min(buffer.len(), start + length);
     let mut i = start;
@@ -73,7 +74,7 @@ fn extract_iptc_fields_from_block(buffer: &Vec<u8>, start: usize, length: usize)
 }
 
 pub(crate) fn read_iptc_data(
-    buffer: &Vec<u8>,
+    buffer: &[u8],
     start: usize,
     length: usize,
 ) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
@@ -129,7 +130,7 @@ pub(crate) fn read_iptc_data(
 }
 
 fn extract_blocks(
-    buffer: &Vec<u8>,
+    buffer: &[u8],
     start: usize,
     length: usize,
 ) -> Result<Vec<Block>, Box<dyn Error>> {

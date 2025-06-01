@@ -35,11 +35,17 @@ use std::error::Error;
 use std::path::Path;
 pub use tags::IPTCTag;
 
+#[derive(Default)]
 pub struct IPTC {
     pub data: HashMap<IPTCTag, Vec<String>>,
 }
 
 impl IPTC {
+    /// Creates an empty IPTC metadata collection.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn get_all(&self) -> HashMap<IPTCTag, Vec<String>> {
         self.data.clone()
     }

@@ -24,8 +24,12 @@ use std::path::Path;
 fn main() -> Result<(), Box<dyn Error>> {
     let image_path = Path::new("tests/smiley.jpg");
 
-    // Reading IPTC metadata
+    // Reading IPTC metadata from file
     let mut iptc = IPTC::read_from_path(&image_path)?;
+
+    // Alternatively, you can read from a buffer
+    // let buffer = std::fs::read(&image_path)?;
+    // let mut iptc = IPTC::read_from_buffer(&buffer)?;
 
     // See all the tags in the image
     println!("IPTC: {:?}", iptc.get_all());
@@ -45,6 +49,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     iptc.set_tag(IPTCTag::City, "Oslo");
 
     iptc.write_to_file(&image_path)?;
+
+    // Alternatively, you can write to a buffer
+    // let buffer = std::fs::read(&image_path)?;
+    // let updated_buffer = iptc.write_to_buffer(&buffer)?;
+    // std::fs::write("output.jpg", updated_buffer)?;
 
     Ok(())
 }

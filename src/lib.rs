@@ -35,11 +35,17 @@ use std::error::Error;
 use std::path::Path;
 pub use tags::IPTCTag;
 
+#[derive(Default)]
 pub struct IPTC {
     pub data: HashMap<IPTCTag, Vec<String>>,
 }
 
 impl IPTC {
+    /// Creates an empty IPTC metadata collection.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn get_all(&self) -> HashMap<IPTCTag, Vec<String>> {
         self.data.clone()
     }
@@ -64,32 +70,38 @@ impl IPTC {
         }
     }
 
+    /// Produces a new JPEG image buffer augmented with IPTC metadata.
+    pub fn write_to_buffer(&self, image_buffer: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+        let format = image::guess_format(image_buffer)?;
+
+        if format != ImageFormat::Jpeg {
+            return Err("Writing IPTC data is only supported for JPEG files".into());
+        }
+
+        JPEGReader::write_iptc(image_buffer, &self.data)
+    }
+
+    /// Writes IPTC metadata to a JPEG file.
     pub fn write_to_file(&self, image_path: &Path) -> Result<(), Box<dyn Error>> {
         let buffer = std::fs::read(image_path)?;
-        let format = image::guess_format(&buffer)?;
-
-        let new_buffer = if format == ImageFormat::Jpeg {
-            JPEGReader::write_iptc(&buffer, &self.data)?
-        } else {
-            return Err("Writing IPTC data is only supported for JPEG files".into());
-        };
+        let new_buffer = self.write_to_buffer(&buffer)?;
 
         std::fs::write(image_path, new_buffer)?;
         Ok(())
     }
 
-    pub fn read_from_path(image_path: &Path) -> Result<Self, Box<dyn Error>> {
-        let buffer = std::fs::read(image_path)?;
-        let format = image::guess_format(&buffer)?;
+    /// Reads IPTC metadata from a buffer containing a JPEG or TIFF image.
+    pub fn read_from_buffer(image_buffer: &[u8]) -> Result<Self, Box<dyn Error>> {
+        let format = image::guess_format(image_buffer)?;
 
         let mut string_data = HashMap::new();
 
         // Check if the file is a JPEG
         if format == ImageFormat::Jpeg {
-            string_data = JPEGReader::read_iptc(&buffer)?;
+            string_data = JPEGReader::read_iptc(image_buffer)?;
         } else if format == ImageFormat::Tiff {
             println!("TIFF file detected, not all tags are supported");
-            string_data = TIFFReader::read_iptc(&buffer)?;
+            string_data = TIFFReader::read_iptc(image_buffer)?;
         } else {
             println!("Unsupported file, only JPEG & Tiff files are supported");
         }
@@ -98,5 +110,11 @@ impl IPTC {
         let data = string_data.into_iter().map(|(k, v)| (k, vec![v])).collect();
 
         Ok(IPTC { data })
+    }
+
+    /// Reads IPTC metadata from a JPEG or TIFF file.
+    pub fn read_from_path(image_path: &Path) -> Result<Self, Box<dyn Error>> {
+        let buffer = std::fs::read(image_path)?;
+        Self::read_from_buffer(&buffer)
     }
 }

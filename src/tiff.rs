@@ -12,7 +12,7 @@ use xml::reader::{EventReader, XmlEvent};
 pub(crate) struct TIFFReader;
 
 impl TIFFReader {
-    pub fn read_iptc(buffer: &Vec<u8>) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
+    pub fn read_iptc(buffer: &[u8]) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
         let cursor = Cursor::new(buffer);
         let mut decoder = Decoder::new(cursor)?;
 

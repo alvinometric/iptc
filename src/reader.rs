@@ -145,35 +145,36 @@ fn extract_blocks(
             // Resource ID is 2 bytes, so use i16BE
             let resource_id = buffer.read_i16be(i + 4);
 
-            // Name: Pascal string, padded to make the size even
-            if i + 5 >= end {
+            // Name: Pascal string (length byte + characters), padded to make the size even
+            if i + 6 >= end {
                 return Err("Invalid offset for name length".into());
             }
-            let name_length = buffer[i + 5] as usize;
+            let name_length = buffer[i + 6] as usize;
+            let name_field_size = (1 + name_length + 1) & !1;
 
-            let name = String::from_utf8(buffer[i + 6..i + 6 + name_length].to_vec())?;
+            let name = String::from_utf8(buffer[i + 7..i + 7 + name_length].to_vec())?;
 
-            // println!("Reading block size at i: {}", i + 6 + name_length);
-
-            if i + 6 + name_length + 2 > end {
+            // Size of the resource data: 4 bytes, big endian
+            let size_offset = i + 6 + name_field_size;
+            if size_offset + 4 > end {
                 return Err("Invalid offset for block size".into());
             }
-            let block_size = buffer.read_u16be(i + 6 + name_length) as usize;
-
-            // println!(
-            //     "i: {}, name: {}, name_length: {}, block_size: {}",
-            //     i, name, name_length, block_size
-            // );
+            let block_size = u32::from_be_bytes([
+                buffer[size_offset],
+                buffer[size_offset + 1],
+                buffer[size_offset + 2],
+                buffer[size_offset + 3],
+            ]) as usize;
 
             blocks.push(Block {
                 resource_id,
                 name,
-                start_of_block: i + 6 + name_length + 4,
+                start_of_block: size_offset + 4,
                 size_of_block: block_size,
             });
 
-            i += 6 + name_length + 4;
-            i += block_size;
+            // Resource data is padded to make the size even
+            i = size_offset + 4 + block_size + (block_size & 1);
         } else {
             // println!("Not 8BIM at {}: {:?}", i, buffer.get(i..i + 4));
             i += 1;

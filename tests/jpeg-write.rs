@@ -5,12 +5,18 @@ use std::path::Path;
 use iptc::IPTC;
 use iptc::IPTCTag;
 
+fn file_contains(path: &Path, text: &str) -> bool {
+    let bytes = fs::read(path).unwrap();
+    bytes.windows(text.len()).any(|window| window == text.as_bytes())
+}
+
 #[test]
 fn test_write_iptc() -> Result<(), Box<dyn Error>> {
     // Create a copy of the test file so we don't modify the original
-    let original_path = Path::new("tests/smiley.jpg");
-    let test_path = Path::new("tests/smiley_write_test.jpg");
-    let debug_path = Path::new("tests/smiley_debug.jpg");
+    // https://www.flickr.com/photos/marine_corps/13535839043/ (United States government work)
+    let original_path = Path::new("tests/marine-corps.jpg");
+    let test_path = Path::new("tests/marine-corps_write_test.jpg");
+    let debug_path = Path::new("tests/marine-corps_debug.jpg");
     fs::copy(original_path, test_path)?;
 
     // Read the original IPTC data
@@ -34,6 +40,12 @@ fn test_write_iptc() -> Result<(), Box<dyn Error>> {
     // Read back and verify
     let new_iptc = IPTC::read_from_path(&test_path)?;
     assert_eq!(new_iptc.get(IPTCTag::City), "Oslo");
+
+    // Flickr keeps the link in metadata
+    assert!(file_contains(
+        test_path,
+        "https://flickr.com/e/Js4hZ%2BfZvO6Xk0y3YZvxWLOOlBaGCVwNTnN3w9Zh8jw%3D"
+    ));
 
     // Verify all keywords are present
     let read_keywords = new_iptc.get(IPTCTag::Keywords);

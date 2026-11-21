@@ -26,6 +26,7 @@ struct Block {
     resource_id: i16,
     #[allow(unused)]
     name: String,
+    start: usize,
     start_of_block: usize,
     size_of_block: usize,
 }
@@ -35,6 +36,13 @@ struct Field {
     record_number: u8,
     dataset_number: u8,
     value: String,
+    bytes: Vec<u8>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Rest {
+    pub(crate) unknown_fields: Vec<(u8, u8, Vec<u8>)>,
+    pub(crate) other_metadata: Vec<u8>,
 }
 
 fn extract_iptc_fields_from_block(buffer: &[u8], start: usize, length: usize) -> Vec<Field> {
@@ -63,6 +71,7 @@ fn extract_iptc_fields_from_block(buffer: &[u8], start: usize, length: usize) ->
                     record_number,
                     dataset_number,
                     value,
+                    bytes: raw_bytes.to_vec(),
                 });
             }
             i += 5 + value_length;
@@ -77,8 +86,9 @@ pub(crate) fn read_iptc_data(
     buffer: &[u8],
     start: usize,
     length: usize,
-) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
+) -> Result<(HashMap<IPTCTag, String>, Rest), Box<dyn Error>> {
     let mut data: HashMap<IPTCTag, String> = HashMap::new();
+    let mut rest = Rest::default();
     let tags_map = TagsMap::new();
 
     if buffer.get(start..start + 13).ok_or("Invalid slice")? != b"Photoshop 3.0" {
@@ -87,8 +97,12 @@ pub(crate) fn read_iptc_data(
 
     extract_blocks(buffer, start + 13, length)?
         .iter()
-        .filter(|block| block.resource_id == 1028)
         .for_each(|block| {
+            if block.resource_id != 1028 {
+                let end = block.start_of_block + block.size_of_block + (block.size_of_block & 1);
+                rest.other_metadata.extend_from_slice(&buffer[block.start..end.min(buffer.len())]);
+                return;
+            }
             // println!("Block: {:?}", block);
             let fields =
                 extract_iptc_fields_from_block(buffer, block.start_of_block, block.size_of_block);
@@ -101,7 +115,9 @@ pub(crate) fn read_iptc_data(
                 // println!("Field ID: {}, Field: {:?}", tag_key, field);
                 let (name, repeatable, parse) = tags_map.get(tag_key).unwrap_or(NULL_BLOCK);
 
-                if name != IPTCTag::Null {
+                if name == IPTCTag::Null {
+                    rest.unknown_fields.push((record_number, dataset_number, field.bytes));
+                } else {
                     let parsed_value = parse(field.value);
                     if !parsed_value.trim().is_empty() {
                         if repeatable {
@@ -126,7 +142,7 @@ pub(crate) fn read_iptc_data(
             }
         });
 
-    Ok(data)
+    Ok((data, rest))
 }
 
 fn extract_blocks(
@@ -145,7 +161,7 @@ fn extract_blocks(
             // Resource ID is 2 bytes, so use i16BE
             let resource_id = buffer.read_i16be(i + 4);
 
-            // Name: Pascal string (length byte + characters), padded to make the size even
+            // Name: Pascal string, padded to make the size even
             if i + 6 >= end {
                 return Err("Invalid offset for name length".into());
             }
@@ -169,6 +185,7 @@ fn extract_blocks(
             blocks.push(Block {
                 resource_id,
                 name,
+                start: i,
                 start_of_block: size_offset + 4,
                 size_of_block: block_size,
             });

@@ -50,6 +50,7 @@ use jpeg::JPEGReader;
 mod tiff;
 use tiff::TIFFReader;
 mod reader;
+use reader::Rest;
 mod tags;
 use image::ImageFormat;
 use std::collections::HashMap;
@@ -60,6 +61,7 @@ pub use tags::IPTCTag;
 #[derive(Default)]
 pub struct IPTC {
     pub data: HashMap<IPTCTag, Vec<String>>,
+    rest: Rest,
 }
 
 impl IPTC {
@@ -100,7 +102,7 @@ impl IPTC {
             return Err("Writing IPTC data is only supported for JPEG files".into());
         }
 
-        JPEGReader::write_iptc(image_buffer, &self.data)
+        JPEGReader::write_iptc(image_buffer, &self.data, &self.rest)
     }
 
     /// Writes IPTC metadata to a JPEG file.
@@ -117,10 +119,11 @@ impl IPTC {
         let format = image::guess_format(image_buffer)?;
 
         let mut string_data = HashMap::new();
+        let mut rest = Rest::default();
 
         // Check if the file is a JPEG
         if format == ImageFormat::Jpeg {
-            string_data = JPEGReader::read_iptc(image_buffer)?;
+            (string_data, rest) = JPEGReader::read_iptc(image_buffer)?;
         } else if format == ImageFormat::Tiff {
             println!("TIFF file detected, not all tags are supported");
             string_data = TIFFReader::read_iptc(image_buffer)?;
@@ -131,7 +134,7 @@ impl IPTC {
         // Convert String to Vec<String>
         let data = string_data.into_iter().map(|(k, v)| (k, vec![v])).collect();
 
-        Ok(IPTC { data })
+        Ok(IPTC { data, rest })
     }
 
     /// Reads IPTC metadata from a JPEG or TIFF file.

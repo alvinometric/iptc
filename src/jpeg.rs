@@ -1,5 +1,5 @@
 use crate::reader::ReadUtils;
-use crate::reader::read_iptc_data;
+use crate::reader::{Rest, read_iptc_data};
 use crate::tags;
 use crate::tags::TagsMap;
 use crate::tags::{NULL_BLOCK, parse_short};
@@ -11,7 +11,7 @@ use tags::IPTCTag;
 pub(crate) struct JPEGReader;
 
 impl JPEGReader {
-    pub fn read_iptc(buffer: &[u8]) -> Result<HashMap<IPTCTag, String>, Box<dyn Error>> {
+    pub fn read_iptc(buffer: &[u8]) -> Result<(HashMap<IPTCTag, String>, Rest), Box<dyn Error>> {
         let mut offset = 0;
         offset += 2;
 
@@ -41,12 +41,13 @@ impl JPEGReader {
             }
         }
 
-        Ok(HashMap::new())
+        Ok((HashMap::new(), Rest::default()))
     }
 
     pub fn write_iptc(
         buffer: &[u8],
         data: &HashMap<IPTCTag, Vec<String>>,
+        rest: &Rest,
     ) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut new_buffer = Vec::new();
 
@@ -58,7 +59,7 @@ impl JPEGReader {
         let mut offset = 2;
 
         // Convert IPTC data to binary format first
-        let iptc_data = Self::convert_iptc_to_binary(data)?;
+        let iptc_data = Self::convert_iptc_to_binary(data, rest)?;
         let mut found_app13 = false;
         let mut inserted_app13 = false;
 
@@ -162,13 +163,13 @@ impl JPEGReader {
 
     fn convert_iptc_to_binary(
         data: &HashMap<IPTCTag, Vec<String>>,
+        rest: &Rest,
     ) -> Result<Vec<u8>, Box<dyn Error>> {
         let mut binary = Vec::new();
         let tags_map = TagsMap::new();
 
         // Add Photoshop header
         binary.extend_from_slice(b"Photoshop 3.0\0");
-        binary.push(0x00); // Pad to even length
 
         // Add 8BIM marker and IPTC block
         let mut iptc_block = Vec::new();
@@ -240,6 +241,12 @@ impl JPEGReader {
             }
         }
 
+        for (record, dataset, value) in &rest.unknown_fields {
+            iptc_block.extend_from_slice(&[0x1C, *record, *dataset]);
+            iptc_block.extend_from_slice(&(value.len() as u16).to_be_bytes());
+            iptc_block.extend_from_slice(value);
+        }
+
         // Add 8BIM marker
         binary.extend_from_slice(b"8BIM");
 
@@ -266,6 +273,8 @@ impl JPEGReader {
         if binary.len() % 2 != 0 {
             binary.push(0x00);
         }
+
+        binary.extend_from_slice(&rest.other_metadata);
 
         Ok(binary)
     }

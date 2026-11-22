@@ -86,8 +86,8 @@ pub(crate) fn read_iptc_data(
     buffer: &[u8],
     start: usize,
     length: usize,
-) -> Result<(HashMap<IPTCTag, String>, Rest), Box<dyn Error>> {
-    let mut data: HashMap<IPTCTag, String> = HashMap::new();
+) -> Result<(HashMap<IPTCTag, Vec<String>>, Rest), Box<dyn Error>> {
+    let mut data: HashMap<IPTCTag, Vec<String>> = HashMap::new();
     let mut rest = Rest::default();
     let tags_map = TagsMap::new();
 
@@ -121,21 +121,12 @@ pub(crate) fn read_iptc_data(
                     let parsed_value = parse(field.value);
                     if !parsed_value.trim().is_empty() {
                         if repeatable {
-                            if let Some(existing_value) = data.get_mut(&name) {
-                                if !existing_value
-                                    .to_lowercase()
-                                    .contains(&parsed_value.to_lowercase())
-                                {
-                                    if !existing_value.is_empty() {
-                                        existing_value.push_str(", ");
-                                    }
-                                    existing_value.push_str(&parsed_value);
-                                }
-                            } else {
-                                data.insert(name, parsed_value);
+                            let values = data.entry(name).or_default();
+                            if !values.contains(&parsed_value) {
+                                values.push(parsed_value);
                             }
                         } else {
-                            data.insert(name, parsed_value);
+                            data.insert(name, vec![parsed_value]);
                         }
                     }
                 }

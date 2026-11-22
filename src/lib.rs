@@ -118,23 +118,26 @@ impl IPTC {
     pub fn read_from_buffer(image_buffer: &[u8]) -> Result<Self, Box<dyn Error>> {
         let format = image::guess_format(image_buffer)?;
 
-        let mut string_data = HashMap::new();
+        let mut array_data = HashMap::new();
         let mut rest = Rest::default();
 
         // Check if the file is a JPEG
         if format == ImageFormat::Jpeg {
-            (string_data, rest) = JPEGReader::read_iptc(image_buffer)?;
+            (array_data, rest) = JPEGReader::read_iptc(image_buffer)?;
         } else if format == ImageFormat::Tiff {
             println!("TIFF file detected, not all tags are supported");
-            string_data = TIFFReader::read_iptc(image_buffer)?;
+            array_data = TIFFReader::read_iptc(image_buffer)?
+                .into_iter()
+                .map(|(k, v)| (k, vec![v]))
+                .collect();
         } else {
             println!("Unsupported file, only JPEG & Tiff files are supported");
         }
 
-        // Convert String to Vec<String>
-        let data = string_data.into_iter().map(|(k, v)| (k, vec![v])).collect();
-
-        Ok(IPTC { data, rest })
+        Ok(IPTC {
+            data: array_data,
+            rest,
+        })
     }
 
     /// Reads IPTC metadata from a JPEG or TIFF file.

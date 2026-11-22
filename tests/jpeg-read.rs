@@ -33,9 +33,7 @@ fn exiv2_iptc_example() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-// https://github.com/Exiv2/exiv2/blob/main/test/data/iptc-psAPP13-wIPTCmid.jpg
-// The IPTC resource sits between other Photoshop resources.
-// Expected values come from exiv2's reference output:
+// Making sure we're matching exiv2's results
 // https://github.com/Exiv2/exiv2/blob/main/test/data/iptc-psAPP13-wIPTCmid.jpg.ipgd
 #[test]
 fn iptc_between_other_photoshop_resources() -> Result<(), Box<dyn Error>> {
@@ -47,6 +45,16 @@ fn iptc_between_other_photoshop_resources() -> Result<(), Box<dyn Error>> {
     assert_eq!(iptc.get(IPTCTag::RecordVersion), "0");
     assert_eq!(iptc.get(IPTCTag::Credit), "This is a credit");
     assert_eq!(iptc.get(IPTCTag::ByLine), "This is a by-line");
+
+    Ok(())
+}
+
+#[test]
+fn empty_iptc_example() -> Result<(), Box<dyn Error>> {
+    let image_path = Path::new("tests/starry-night.jpg");
+    let iptc = IPTC::read_from_path(&image_path)?;
+
+    assert!(iptc.get_all().is_empty());
 
     Ok(())
 }

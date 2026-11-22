@@ -7,7 +7,46 @@ use iptc::IPTCTag;
 
 fn file_contains(path: &Path, text: &str) -> bool {
     let bytes = fs::read(path).unwrap();
-    bytes.windows(text.len()).any(|window| window == text.as_bytes())
+    bytes
+        .windows(text.len())
+        .any(|window| window == text.as_bytes())
+}
+
+#[test]
+fn keywords_survive_round_trip() -> Result<(), Box<dyn Error>> {
+    let original = fs::read("tests/marine-corps.jpg")?;
+    let keywords = ["party", "art", "rust"];
+
+    let mut iptc = IPTC::new();
+    for keyword in keywords {
+        iptc.set_tag(IPTCTag::Keywords, keyword);
+    }
+
+    let written = iptc.write_to_buffer(&original)?;
+    let read_back = IPTC::read_from_buffer(&written)?;
+    assert_eq!(read_back.data[&IPTCTag::Keywords], keywords);
+
+    let rewritten = read_back.write_to_buffer(&original)?;
+    let read_again = IPTC::read_from_buffer(&rewritten)?;
+    assert_eq!(read_again.data[&IPTCTag::Keywords], keywords);
+
+    Ok(())
+}
+
+#[test]
+fn test_utf8_characters() -> Result<(), Box<dyn Error>> {
+    let original = fs::read("tests/starry-night.jpg")?;
+
+    let mut iptc = IPTC::new();
+    iptc.set_tag(IPTCTag::City, "Vézelay");
+    let written = iptc.write_to_buffer(&original)?;
+    
+    let read_back = IPTC::read_from_buffer(&written)?;
+    // "ESC % G" means characters are encoded as UTF-8
+    let utf8_marker = format!("{}%G", char::from(27)); // 27 = ESC
+    assert_eq!(read_back.get(IPTCTag::CodedCharacterSet), utf8_marker);
+
+    Ok(())
 }
 
 #[test]

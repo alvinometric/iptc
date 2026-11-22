@@ -11,12 +11,13 @@ use tags::IPTCTag;
 pub(crate) struct JPEGReader;
 
 impl JPEGReader {
-    pub fn read_iptc(buffer: &[u8]) -> Result<(HashMap<IPTCTag, String>, Rest), Box<dyn Error>> {
-        let mut offset = 0;
-        offset += 2;
+    pub fn read_iptc(
+        buffer: &[u8],
+    ) -> Result<(HashMap<IPTCTag, Vec<String>>, Rest), Box<dyn Error>> {
+        let mut offset = 2;
 
         // Loop through the file looking for the Photoshop header bytes
-        while offset < buffer.len() {
+        while offset + 4 <= buffer.len() {
             if buffer[offset] != 0xFF {
                 return Err(format!(
                     "Not a valid marker at offset {}, found: {}",
@@ -26,6 +27,11 @@ impl JPEGReader {
             }
 
             let application_marker = buffer[offset + 1];
+
+            // End of metadata (0xDA) or end of file (0xD9)
+            if application_marker == 0xDA || application_marker == 0xD9 {
+                break;
+            }
 
             if application_marker == 237 {
                 // This is our marker. The content length is 2 byte number.
@@ -173,6 +179,11 @@ impl JPEGReader {
 
         // Add 8BIM marker and IPTC block
         let mut iptc_block = Vec::new();
+
+        // Values are written as UTF-8, so say so. Without this tag, readers like exiftool assume Latin-1
+        let mut data = data.clone();
+        let utf8_marker = format!("{}%G", char::from(27)); // 27 = ESC
+        data.insert(IPTCTag::CodedCharacterSet, vec![utf8_marker]);
 
         // Sort tags by record and dataset numbers
         let mut sorted_tags: Vec<_> = data.iter().collect();

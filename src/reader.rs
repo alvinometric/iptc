@@ -118,7 +118,7 @@ pub(crate) fn read_iptc_data(
                 if name == IPTCTag::Null {
                     rest.unknown_fields.push((record_number, dataset_number, field.bytes));
                 } else {
-                    let parsed_value = parse(field.value);
+                    let parsed_value = parse.parse(field.value);
                     if !parsed_value.trim().is_empty() {
                         if repeatable {
                             let values = data.entry(name).or_default();

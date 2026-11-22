@@ -75,10 +75,24 @@ pub enum IPTCTag {
     SizeMode,
 }
 
-pub(crate) type ParseFn = fn(String) -> String;
+/// Which parse function a tag uses
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ParseMethod {
+    Text,
+    Short,
+}
 
-// name, repeatable, default parse
-pub(crate) type TagBlock = (IPTCTag, bool, ParseFn);
+impl ParseMethod {
+    pub(crate) fn parse(self, s: String) -> String {
+        match self {
+            ParseMethod::Text => default_parse(s),
+            ParseMethod::Short => parse_short(s),
+        }
+    }
+}
+
+// name, repeatable, parse method
+pub(crate) type TagBlock = (IPTCTag, bool, ParseMethod);
 
 pub(crate) struct TagsMap {
     map: HashMap<String, TagBlock>,
@@ -103,8 +117,8 @@ pub(crate) fn parse_short(s: String) -> String {
     value.to_string()
 }
 
-const PARSE_FN: ParseFn = default_parse;
-const PARSE_SHORT: ParseFn = parse_short;
+const PARSE_FN: ParseMethod = ParseMethod::Text;
+const PARSE_SHORT: ParseMethod = ParseMethod::Short;
 
 pub const NULL_BLOCK: TagBlock = (IPTCTag::Null, false, PARSE_FN);
 

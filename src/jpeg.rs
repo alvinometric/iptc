@@ -2,7 +2,7 @@ use crate::reader::ReadUtils;
 use crate::reader::{Rest, read_iptc_data};
 use crate::tags;
 use crate::tags::TagsMap;
-use crate::tags::{NULL_BLOCK, parse_short};
+use crate::tags::{NULL_BLOCK, ParseMethod};
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -232,7 +232,7 @@ impl JPEGReader {
                     iptc_block.push(dataset);
 
                     // Convert value based on tag format
-                    let value_bytes = if parse_fn as usize == parse_short as usize {
+                    let value_bytes = if parse_fn == ParseMethod::Short {
                         // For short values, convert string to u16 and then to bytes
                         let num_val = value.parse::<u16>().unwrap_or(0);
                         vec![(num_val >> 8) as u8, num_val as u8]

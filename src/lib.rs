@@ -52,6 +52,7 @@ use tiff::TIFFReader;
 mod reader;
 use reader::Rest;
 mod tags;
+use tags::TagsMap;
 use image::ImageFormat;
 use std::collections::HashMap;
 use std::error::Error;
@@ -82,15 +83,16 @@ impl IPTC {
         returned_tag.unwrap().join(", ")
     }
 
+    /// Adds a value to a repeatable tag like Keywords, or replaces the value of a single-value tag like City.
     pub fn set_tag(&mut self, tag: IPTCTag, value: &str) {
-        if let Some(values) = self.data.get_mut(&tag) {
-            // For repeatable fields, add to the vector if not already present
-            if !values.contains(&value.to_string()) {
-                values.push(value.to_string());
-            }
-        } else {
-            // For new fields, start a new vector
+        let repeatable = TagsMap::new().find(&tag).is_some_and(|entry| entry.1);
+        if !repeatable {
             self.data.insert(tag, vec![value.to_string()]);
+            return;
+        }
+        let values = self.data.entry(tag).or_default();
+        if !values.contains(&value.to_string()) {
+            values.push(value.to_string());
         }
     }
 

@@ -61,7 +61,8 @@ fn test_write_iptc() -> Result<(), Box<dyn Error>> {
     // Read the original IPTC data
     let mut iptc = IPTC::read_from_path(&test_path)?;
 
-    // Modify some tags
+    // Modify some tags, last operation counts
+    iptc.set_tag(IPTCTag::City, "Bergen");
     iptc.set_tag(IPTCTag::City, "Oslo");
 
     // Set multiple keywords as separate entries

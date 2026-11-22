@@ -96,7 +96,8 @@ pub(crate) type TagBlock = (IPTCTag, bool, ParseMethod);
 
 pub(crate) struct TagsMap {
     map: HashMap<String, TagBlock>,
-    reverse_map: HashMap<IPTCTag, (u8, u8)>,
+    // tag -> (record, dataset, entry)
+    reverse_map: HashMap<IPTCTag, (u8, u8, TagBlock)>,
 }
 
 fn default_parse(s: String) -> String {
@@ -216,14 +217,14 @@ impl TagsMap {
         .map(|(k, v)| (k.to_string(), v))
         .collect();
 
-        // Create reverse map from tag to (record,dataset)
+        // Create reverse map from tag to (record, dataset, entry)
         let reverse_map = map
             .iter()
-            .map(|(k, &(tag, _, _))| {
+            .map(|(k, &block)| {
                 let parts: Vec<&str> = k.split(':').collect();
                 let record = parts[0].parse::<u8>().unwrap();
                 let dataset = parts[1].parse::<u8>().unwrap();
-                (tag, (record, dataset))
+                (block.0, (record, dataset, block))
             })
             .collect();
 
@@ -235,6 +236,11 @@ impl TagsMap {
     }
 
     pub(crate) fn get_record_dataset(&self, tag: &IPTCTag) -> Option<(u8, u8)> {
-        self.reverse_map.get(tag).copied()
+        self.reverse_map.get(tag).map(|entry| (entry.0, entry.1))
+    }
+
+    /// Finds the table entry for a tag.
+    pub(crate) fn find(&self, tag: &IPTCTag) -> Option<TagBlock> {
+        self.reverse_map.get(tag).map(|entry| entry.2)
     }
 }

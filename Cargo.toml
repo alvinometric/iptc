@@ -1,6 +1,6 @@
 [package]
 name = "iptc"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 license = "MIT"
 description = "Read IPTC tags from JPEG files in pure Rust, with partial support for Tiff files."

@@ -131,8 +131,12 @@ impl JPEGReader {
                 break;
             }
 
-            // If this is APP13, replace it with our new data
-            if marker == 0xED {
+            // Remove subsequent APP13
+            // exiv2 does the same: https://github.com/Exiv2/exiv2/blob/6c0f61e1289bbb7688379ed60f052459206638f8/src/jpgimage.cpp#L910
+            if marker == 0xED && (found_app13 || inserted_app13) {
+                offset += 2 + length;
+            } else if marker == 0xED {
+                // If this is APP13, replace it with our new data
                 found_app13 = true;
                 // Write APP13 marker
                 new_buffer.extend_from_slice(&[0xFF, 0xED]);

@@ -34,13 +34,24 @@ fn keywords_survive_round_trip() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn saving_without_changes_does_not_grow_file() -> Result<(), Box<dyn Error>> {
+    let original = fs::read("tests/DSC00512.jpg")?;
+    let iptc = IPTC::read_from_buffer(&original)?;
+
+    let saved = iptc.write_to_buffer(&original)?;
+
+    assert!(saved.len() <= original.len());
+    Ok(())
+}
+
+#[test]
 fn test_utf8_characters() -> Result<(), Box<dyn Error>> {
     let original = fs::read("tests/starry-night.jpg")?;
 
     let mut iptc = IPTC::new();
     iptc.set_tag(IPTCTag::City, "Vézelay");
     let written = iptc.write_to_buffer(&original)?;
-    
+
     let read_back = IPTC::read_from_buffer(&written)?;
     // "ESC % G" means characters are encoded as UTF-8
     let utf8_marker = format!("{}%G", char::from(27)); // 27 = ESC

@@ -4,6 +4,7 @@ use crate::tags;
 use crate::tags::TagsMap;
 use crate::tags::{NULL_BLOCK, ParseMethod};
 
+use crate::APP13_MARKER;
 use std::collections::HashMap;
 use std::error::Error;
 use tags::IPTCTag;
@@ -33,7 +34,7 @@ impl JPEGReader {
                 break;
             }
 
-            if application_marker == 237 {
+            if application_marker == APP13_MARKER {
                 // This is our marker. The content length is 2 byte number.
                 let iptc_data = read_iptc_data(
                     buffer,
@@ -103,7 +104,7 @@ impl JPEGReader {
                 // If we haven't inserted APP13 yet, do it now
                 if !found_app13 && !inserted_app13 {
                     // Write APP13 marker
-                    new_buffer.extend_from_slice(&[0xFF, 0xED]);
+                    new_buffer.extend_from_slice(&[0xFF, APP13_MARKER]);
                     // Write length (including length bytes)
                     let total_length = (iptc_data.len() + 2) as u16;
                     new_buffer.push((total_length >> 8) as u8);
@@ -133,13 +134,13 @@ impl JPEGReader {
 
             // Remove subsequent APP13
             // exiv2 does the same: https://github.com/Exiv2/exiv2/blob/6c0f61e1289bbb7688379ed60f052459206638f8/src/jpgimage.cpp#L910
-            if marker == 0xED && (found_app13 || inserted_app13) {
+            if marker == APP13_MARKER && (found_app13 || inserted_app13) {
                 offset += 2 + length;
-            } else if marker == 0xED {
+            } else if marker == APP13_MARKER {
                 // If this is APP13, replace it with our new data
                 found_app13 = true;
                 // Write APP13 marker
-                new_buffer.extend_from_slice(&[0xFF, 0xED]);
+                new_buffer.extend_from_slice(&[0xFF, APP13_MARKER]);
                 // Write length (including length bytes)
                 let total_length = (iptc_data.len() + 2) as u16;
                 new_buffer.push((total_length >> 8) as u8);
@@ -152,7 +153,7 @@ impl JPEGReader {
                 // insert our APP13 data here
                 if !found_app13 && !inserted_app13 && marker > 0xE1 {
                     // Write APP13 marker
-                    new_buffer.extend_from_slice(&[0xFF, 0xED]);
+                    new_buffer.extend_from_slice(&[0xFF, APP13_MARKER]);
                     // Write length (including length bytes)
                     let total_length = (iptc_data.len() + 2) as u16;
                     new_buffer.push((total_length >> 8) as u8);

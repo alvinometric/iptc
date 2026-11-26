@@ -2,6 +2,9 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
+use img_parts::Bytes;
+use img_parts::jpeg::{Jpeg, JpegSegment};
+use iptc::APP13_MARKER;
 use iptc::IPTC;
 use iptc::IPTCTag;
 
@@ -41,6 +44,31 @@ fn saving_without_changes_does_not_grow_file() -> Result<(), Box<dyn Error>> {
     let saved = iptc.write_to_buffer(&original)?;
 
     assert!(saved.len() <= original.len());
+    Ok(())
+}
+
+/// Get all the JPEG segments, exif, etc
+fn get_non_iptc_segments(bytes: Vec<u8>) -> Vec<JpegSegment> {
+    let jpeg = Jpeg::from_bytes(Bytes::from(bytes)).unwrap();
+    jpeg.segments()
+        .iter()
+        .filter(|segment| segment.marker() != APP13_MARKER)
+        .cloned()
+        .collect()
+}
+
+#[test]
+fn writing_preserves_other_segments() -> Result<(), Box<dyn Error>> {
+    // DSC00563 has EXIF, an XMP rating and IPTC keywords
+    let original = fs::read("tests/DSC00563.jpg")?;
+    let mut iptc = IPTC::read_from_buffer(&original)?;
+    iptc.set_tag(IPTCTag::Keywords, "street photography");
+    let written = iptc.write_to_buffer(&original)?;
+
+    assert_eq!(
+        get_non_iptc_segments(original),
+        get_non_iptc_segments(written)
+    );
     Ok(())
 }
 

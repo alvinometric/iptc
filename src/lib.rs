@@ -52,12 +52,14 @@ use tiff::TIFFReader;
 mod reader;
 use reader::Rest;
 mod tags;
-use tags::TagsMap;
 use image::ImageFormat;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
 pub use tags::IPTCTag;
+use tags::TagsMap;
+
+pub const APP13_MARKER: u8 = 0xED;
 
 #[derive(Default)]
 pub struct IPTC {
